@@ -65,8 +65,11 @@ jobs:
       - name: Prepare reservation backend
         run: node scripts/firebase-backend.mjs
 
+      - name: Deploy reservation rules
+        run: node scripts/firebase-backend.mjs deploy-rules
+
       - name: Deploy to Firebase Hosting
-        run: npx --yes firebase-tools@latest deploy --only firestore:rules,hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
+        run: npx --yes firebase-tools@latest deploy --only hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
 
       - name: Verify real reservation storage
         run: node scripts/verify-reservations-live.mjs

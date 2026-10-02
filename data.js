@@ -222,7 +222,7 @@ export async function adminSaveTrip(trip) {
       (trip.cardMax != null && (!Number.isInteger(trip.cardMax) || trip.cardMax < 1 || trip.cardMax > 24)) ||
       (trip.cardSurchargePercent != null && (!Number.isFinite(trip.cardSurchargePercent) || trip.cardSurchargePercent < 0 || trip.cardSurchargePercent > 100)) ||
       (trip.pixMax != null && (!Array.isArray(trip.pixMax) || trip.pixMax.length > 12 || trip.pixMax.some(rule => !Number.isInteger(rule.daysMin) || rule.daysMin < 0 || rule.daysMin > 730 || !Number.isInteger(rule.maxInstallments) || rule.maxInstallments < 1 || rule.maxInstallments > 24))) ||
-      !Array.isArray(trip.images) || trip.images.length > 4 || trip.images.some(image => !image.startsWith('data:image/jpeg;base64,') || image.length > 160000)) throw new Error('Confira os dados e fotos da viagem.');
+      !Array.isArray(trip.images) || trip.images.length > 4 || trip.images.some(image => typeof image !== 'string' || image.length > 160000 || (!image.startsWith('data:image/jpeg;base64,') && !/^\.\/assets\/[a-zA-Z0-9_-]+\.(webp|png|jpe?g)$/.test(image)))) throw new Error('Confira os dados e fotos da viagem.');
   const { id, ...fields } = prepareCatalog(trip);
   fields.bookingClosesAt = Timestamp.fromDate(bookingClosesAt(trip));
   await setDoc(doc(db, 'trip_catalog', id), fields);

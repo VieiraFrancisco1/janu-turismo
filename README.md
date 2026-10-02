@@ -76,7 +76,7 @@ O valor registrado é o do pacote, sem eventual acréscimo de cartão. Pix/cart�
 
 O GitHub Actions usa Node 22 e o secret existente `FIREBASE_SERVICE_ACCOUNT`. Antes da publicação, testa regras e transações no Firestore Emulator. O script `scripts/firebase-backend.mjs` preserva a conta da agência nas regras ativas, cadastra viagens iniciais ausentes e migra somente os campos de validação de viagens existentes. Não sobrescreve preços, fotos ou capacidade real.
 
-O deploy inclui `firestore:rules,hosting`. `scripts/verify-reservations-live.mjs` verifica gravação, novo login, repetição segura e isolamento entre contas no Firebase real usando dados temporários. Esses dados e contas são removidos ao fim. Se todas as viagens tiverem capacidade real configurada, o teste real de escrita é dispensado para não ocupar vagas; os testes no emulador continuam obrigatórios.
+As regras são compiladas e publicadas pela API oficial do Firebase; o CLI publica o Hosting. A credencial existente não precisa consultar ou ativar serviços no Google Cloud. `scripts/verify-reservations-live.mjs` verifica gravação, novo login, repetição segura e isolamento entre contas no Firebase real usando dados temporários. Esses dados e contas são removidos ao fim. Se todas as viagens tiverem capacidade real configurada, o teste real de escrita é dispensado para não ocupar vagas; os testes no emulador continuam obrigatórios.
 
 Para testar localmente (Node 22 e Java 21):
 

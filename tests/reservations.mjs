@@ -99,7 +99,7 @@ try {
   assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 0);
   await assertFails(setDoc(doc(customer, 'trip_catalog', trip.id), trip));
   assert.ok((await admin.adminGet([trip.id])).bookings.length >= 3);
-  await admin.adminSaveTrip({ ...trip, includes: [['bus', 'Transporte']], stops: [['Primeira parada', 'Entrada inclusa']], images: [] });
+  await admin.adminSaveTrip({ ...trip, includes: [['bus', 'Transporte']], stops: [['Primeira parada', 'Entrada inclusa']], images: ['./assets/lagoinha.webp'] });
   const updatedCatalog = (await admin.getCatalog()).find(item => item.id === trip.id);
   assert.deepEqual(Array.from(updatedCatalog.includes[0]), ['bus', 'Transporte']);
   assert.equal((await getDoc(doc(customer, 'trip_catalog', trip.id))).data().includes[0].label, 'Transporte');

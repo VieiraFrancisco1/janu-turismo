@@ -11,9 +11,9 @@ const signature = createSign('RSA-SHA256').update(unsigned).sign(credentials.pri
 const response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${unsigned}.${signature}` }) });
 const token = await response.json();
 if (!response.ok || !token.access_token) throw new Error(`Autenticação do backend falhou (${response.status}).`);
-async function api(url) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token.access_token}` } });
-  if (!res.ok) throw new Error(`Consulta do backend falhou (${res.status}): ${new URL(url).pathname}`);
+async function api(url, options = {}) {
+  const res = await fetch(url, { ...options, headers: { Authorization: `Bearer ${token.access_token}`, 'Content-Type': 'application/json' } });
+  if (!res.ok) { const failure = await res.json().catch(() => ({})); throw new Error(`Operação do backend falhou (${res.status}): ${String(failure.error?.message || new URL(url).pathname).slice(0, 600)}`); }
   return res.json();
 }
 const release = await api(`https://firebaserules.googleapis.com/v1/projects/${project}/releases/cloud.firestore`);
@@ -22,6 +22,18 @@ const source = ruleset.source.files.map(file => file.content).join('\n');
 // Preserva exatamente a conta que já estava autorizada nas regras em produção.
 const agencyMatch = source.match(/function\s+agency\(\)\s*\{\s*return\s+signed\(\)\s*&&\s*request\.auth\.uid\s*==\s*['"]([A-Za-z0-9_-]{10,128})['"]\s*;\s*\}/);
 if (!agencyMatch) throw new Error('A conta da agência precisa ser conferida antes de atualizar as regras. Nenhum acesso foi alterado.');
+if (process.argv[2] === 'deploy-rules') {
+  const content = await fs.readFile('firestore.rules', 'utf8');
+  if (!content.includes(`request.auth.uid == '${agencyMatch[1]}'`) || content.includes('__ADMIN_UID__')) throw new Error('A conta da agência não corresponde às regras preparadas.');
+  const created = await api(`https://firebaserules.googleapis.com/v1/projects/${project}/rulesets`, {
+    method: 'POST', body: JSON.stringify({ source: { files: [{ name: 'firestore.rules', content }] } }),
+  });
+  await api(`https://firebaserules.googleapis.com/v1/projects/${project}/releases/cloud.firestore`, {
+    method: 'PATCH', body: JSON.stringify({ release: { name: release.name, rulesetName: created.name }, updateMask: 'rulesetName' }),
+  });
+  console.log('Regras de reservas compiladas e publicadas pela API oficial do Firebase.');
+  process.exit(0);
+}
 const template = await fs.readFile('firestore.rules.template', 'utf8');
 await fs.writeFile('firestore.rules', template.replaceAll('__ADMIN_UID__', agencyMatch[1]));
 console.log('Conta da agência preservada; regras de reservas preparadas.');
