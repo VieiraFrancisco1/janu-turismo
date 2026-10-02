@@ -1465,3 +1465,95 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
     animation: none;
   }
 }
+
+
+/* HERO: carrossel de viagens em destaque */
+.hero-carousel {
+  position: relative;
+}
+.hero-carousel .hero-shade {
+  background:
+    linear-gradient(90deg, rgba(2,24,57,.92) 0%, rgba(3,42,79,.70) 48%, rgba(3,38,69,.22) 76%, rgba(3,26,52,.08) 100%),
+    linear-gradient(0deg, rgba(2,22,47,.48), transparent 56%);
+}
+.hero-slide .hero-copy {
+  width: min(82%, 510px);
+}
+.hero-slide .hero-copy h2 {
+  display: -webkit-box;
+  overflow: hidden;
+  max-width: 430px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0,0,0,.28);
+}
+.hero-subtitle {
+  max-width: 340px;
+  margin: 5px 0 0 !important;
+  color: #f2f7fb !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+  text-shadow: 0 1px 8px rgba(0,0,0,.28);
+}
+.hero-offer {
+  width: fit-content;
+  margin: 8px 0 0 !important;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  color: #0a376d !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+}
+.hero-offer.is-urgent {
+  background: #ffcf4a;
+  color: #5b3a00 !important;
+}
+.hero-carousel .hero-cta {
+  min-height: 44px;
+  margin-top: 9px;
+  padding-inline: 15px;
+}
+.hero-dots {
+  left: 50%;
+  bottom: 11px;
+  transform: translateX(-50%);
+}
+.hero-dots button {
+  min-width: 10px;
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(255,255,255,.72);
+}
+.hero-dots button.active {
+  width: 26px;
+}
+.hero-arrow {
+  position: absolute;
+  z-index: 6;
+  top: 50%;
+  display: none;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 1px solid rgba(255,255,255,.52);
+  border-radius: 50%;
+  background: rgba(5,35,68,.58);
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
+.hero-arrow-prev { left: 12px; }
+.hero-arrow-next { right: 12px; }
+
+@media (min-width: 900px) {
+  .hero-arrow { display: grid; }
+  .hero-slide .hero-copy { padding-left: 58px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-track { transition: none; }
+}

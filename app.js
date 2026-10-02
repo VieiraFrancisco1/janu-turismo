@@ -119,6 +119,14 @@ function updateAvailabilityUI() {
     el.classList.add(`status-${status.key}`);
   });
 
+  document.querySelectorAll('[data-hero-offer]').forEach(el => {
+    const trip = TRIPS.find(item => item.id === el.dataset.heroOffer);
+    if (!trip) return;
+    const status = tripAvailability(trip.id);
+    el.textContent = status.key === 'last-spots' ? status.text : `A partir de ${money(trip.price)}`;
+    el.classList.toggle('is-urgent', status.key === 'last-spots');
+  });
+
   document.querySelectorAll('[data-minimum-progress]').forEach(holder => {
     const trip = TRIPS.find(item => item.id === holder.dataset.minimumProgress);
     const minimum = Number(holder.dataset.minimum || trip?.minimoParaConfirmar || 0);
@@ -431,42 +439,99 @@ function heroMarkup(trips) {
       <div class="hero-copy"><span class="hero-eyebrow">Janu Turismo <i></i> Ceará</span><h1>Viajar é viver <em>mais histórias.</em></h1><p>Descubra passeios para sair da rotina e aproveitar cada momento.</p><a class="hero-cta" href="#/viagens">Explorar viagens ${icon('arrowRight', 18)}</a></div>
     </section>`;
   }
-  const slides = trips.slice(0, 3);
-  return `<section class="hero hero-carousel" aria-label="Viagens em destaque">
-    <h1 class="sr-only">Janu Turismo — próximas viagens</h1>
-    <div class="hero-track">${slides.map((trip, index) => `<article class="hero-slide" aria-hidden="${index !== 0}">
+
+  const slides = trips.slice(0, 5);
+  const multiple = slides.length > 1;
+  return `<section class="hero hero-carousel" role="region" aria-roledescription="carrossel" aria-label="Viagens em destaque">
+    <h1 class="sr-only">Janu Turismo — viagens em destaque</h1>
+    <div class="hero-track">${slides.map((trip, index) => `<article class="hero-slide" role="group" aria-roledescription="slide" aria-label="${index + 1} de ${slides.length}" aria-hidden="${index !== 0}">
       <img src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" ${index === 0 ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'} />
       <div class="hero-shade"></div>
-      <div class="hero-copy"><span class="hero-eyebrow">${escapeHtml(trip.category)} <i></i> ${escapeHtml(trip.date)}</span><h2>${escapeHtml(trip.title)}${trip.subtitle ? ` <em>${escapeHtml(trip.subtitle)}</em>` : ''}</h2><p>${escapeHtml(trip.kind)}${trip.duracao ? ` · ${escapeHtml(trip.duracao)}` : ''}</p><a class="hero-cta" href="#/viagem/${encodeURIComponent(trip.id)}">Ver viagem ${icon('arrowRight', 18)}</a></div>
+      <div class="hero-copy">
+        <span class="hero-eyebrow">${escapeHtml(trip.category)} <i></i> ${escapeHtml(trip.date)}</span>
+        <h2>${escapeHtml(trip.title)}</h2>
+        ${trip.subtitle ? `<p class="hero-subtitle">${escapeHtml(trip.subtitle)}</p>` : ''}
+        <p class="hero-offer" data-hero-offer="${trip.id}">A partir de ${money(trip.price)}</p>
+        <a class="hero-cta" href="#/viagem/${encodeURIComponent(trip.id)}">Conferir ${icon('arrowRight', 18)}</a>
+      </div>
     </article>`).join('')}</div>
-    <div class="hero-dots" aria-label="Escolher destaque">${slides.map((trip, index) => `<button type="button" data-hero-dot="${index}" class="${index === 0 ? 'active' : ''}" aria-label="Mostrar ${escapeHtml(trip.title)}" aria-pressed="${index === 0}"></button>`).join('')}</div>
-    <span class="hero-index">01 / ${String(slides.length).padStart(2, '0')}</span>
+    ${multiple ? `<button class="hero-arrow hero-arrow-prev" type="button" data-hero-prev aria-label="Viagem anterior">${icon('arrowLeft', 22)}</button>
+    <button class="hero-arrow hero-arrow-next" type="button" data-hero-next aria-label="Próxima viagem">${icon('arrowRight', 22)}</button>
+    <div class="hero-dots" aria-label="Escolher viagem">${slides.map((trip, index) => `<button type="button" data-hero-dot="${index}" class="${index === 0 ? 'active' : ''}" aria-label="Mostrar ${escapeHtml(trip.title)}" aria-pressed="${index === 0}"></button>`).join('')}</div>` : ''}
   </section>`;
 }
 
 function bindHero() {
   const hero = app.querySelector('.hero-carousel');
   if (!hero) return;
+
   const track = hero.querySelector('.hero-track');
   const slides = [...hero.querySelectorAll('.hero-slide')];
   const dots = [...hero.querySelectorAll('[data-hero-dot]')];
-  const index = hero.querySelector('.hero-index');
+  const prev = hero.querySelector('[data-hero-prev]');
+  const next = hero.querySelector('[data-hero-next]');
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   let current = 0;
   let touchStart = null;
+  let autoplayTimer = null;
+  let resumeTimer = null;
 
-  const show = next => {
-    current = (next + slides.length) % slides.length;
+  const show = nextIndex => {
+    if (!slides.length) return;
+    current = (nextIndex + slides.length) % slides.length;
     track.style.transform = `translateX(-${current * 100}%)`;
-    slides.forEach((slide, i) => slide.setAttribute('aria-hidden', String(i !== current)));
-    dots.forEach((dot, i) => {
-      dot.classList.toggle('active', i === current);
-      dot.setAttribute('aria-pressed', String(i === current));
+    slides.forEach((slide, index) => {
+      const active = index === current;
+      slide.setAttribute('aria-hidden', String(!active));
+      slide.querySelectorAll('a, button').forEach(control => {
+        if (active) control.removeAttribute('tabindex');
+        else control.setAttribute('tabindex', '-1');
+      });
     });
-    index.textContent = `${String(current + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+    dots.forEach((dot, index) => {
+      const active = index === current;
+      dot.classList.toggle('active', active);
+      dot.setAttribute('aria-pressed', String(active));
+    });
   };
 
-  dots.forEach(dot => dot.addEventListener('click', () => show(Number(dot.dataset.heroDot))));
-  hero.addEventListener('touchstart', event => { touchStart = event.changedTouches[0]?.clientX ?? null; }, { passive: true });
+  const stopAutoplay = () => {
+    if (autoplayTimer) clearInterval(autoplayTimer);
+    autoplayTimer = null;
+  };
+
+  const startAutoplay = () => {
+    stopAutoplay();
+    if (reducedMotion || slides.length <= 1) return;
+    autoplayTimer = setInterval(() => show(current + 1), 6000);
+  };
+
+  const pauseTemporarily = () => {
+    stopAutoplay();
+    if (resumeTimer) clearTimeout(resumeTimer);
+    if (!reducedMotion && slides.length > 1) {
+      resumeTimer = setTimeout(startAutoplay, 12000);
+    }
+  };
+
+  dots.forEach(dot => dot.addEventListener('click', () => {
+    show(Number(dot.dataset.heroDot));
+    pauseTemporarily();
+  }));
+  prev?.addEventListener('click', () => { show(current - 1); pauseTemporarily(); });
+  next?.addEventListener('click', () => { show(current + 1); pauseTemporarily(); });
+
+  hero.addEventListener('mouseenter', stopAutoplay);
+  hero.addEventListener('mouseleave', startAutoplay);
+  hero.addEventListener('focusin', stopAutoplay);
+  hero.addEventListener('focusout', event => {
+    if (!hero.contains(event.relatedTarget)) startAutoplay();
+  });
+
+  hero.addEventListener('touchstart', event => {
+    touchStart = event.changedTouches[0]?.clientX ?? null;
+    pauseTemporarily();
+  }, { passive: true });
   hero.addEventListener('touchend', event => {
     if (touchStart === null) return;
     const end = event.changedTouches[0]?.clientX ?? touchStart;
@@ -474,6 +539,9 @@ function bindHero() {
     if (Math.abs(delta) >= 45) show(current + (delta < 0 ? 1 : -1));
     touchStart = null;
   }, { passive: true });
+
+  show(0);
+  startAutoplay();
 }
 
 function visibleHomeTrips() {
@@ -497,25 +565,22 @@ function bindDiscoveryControls({ home = false } = {}) {
 function renderHome() {
   const publishedTrips = upcomingTrips();
   const shownTrips = visibleHomeTrips();
-  const specialTrips = shownTrips.filter(isSpecialActive);
+  const specialTrips = publishedTrips.filter(isSpecialActive);
+  const heroTrips = (specialTrips.length ? specialTrips : publishedTrips).filter(trip => trip.image).slice(0, specialTrips.length ? 5 : 3);
   const regularTrips = shownTrips.filter(trip => !isSpecialActive(trip));
-  const specialSection = specialTrips.length ? `<section class="special-events" aria-labelledby="special-title">
-      <div class="special-heading"><div><span class="special-kicker">EVENTO ESPECIAL</span><h2 id="special-title">Viagens em destaque</h2><p>Experiências especiais por tempo limitado.</p></div></div>
-      <div class="trip-grid special-trip-grid">${specialTrips.map(trip => tripCard(trip, { special: true })).join('')}</div>
-    </section>` : '';
+
   const upcomingSection = regularTrips.length ? `<section class="featured" aria-labelledby="featured-title">
       <div class="section-heading"><div><span class="section-kicker">DESTINOS PARA VOCÊ</span><h2 id="featured-title">Próximas viagens</h2></div><a href="#/viagens">Ver todas ${icon('arrowRight', 18)}</a></div>
       <div class="trip-grid home-trip-grid">${regularTrips.map(trip => tripCard(trip)).join('')}</div>
     </section>` : `<section class="featured"><div class="empty-state"><h2>Nenhuma viagem encontrada</h2><p>Troque a cidade de embarque ou o tipo de passeio para ver outras opções.</p></div></section>`;
 
   app.innerHTML = `${header()}<main class="wrap page home-page" id="main">
-    ${heroMarkup(publishedTrips.filter(trip => trip.image))}
+    ${heroMarkup(heroTrips)}
     ${trustBand()}
     <section class="discovery-panel" aria-label="Encontrar uma viagem">
       ${boardingSelector()}
       ${filterChips()}
     </section>
-    ${specialSection}
     ${upcomingSection}
     ${testimonialsSection()}
     ${siteFooter()}
