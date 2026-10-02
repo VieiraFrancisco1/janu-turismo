@@ -3,7 +3,7 @@ import { bookingId } from './booking-model.js';
 import { photoCarouselMarkup, explorePhotosMarkup, initPhotoGallery } from './photo-gallery.js';
 import { initScrollGuide } from './scroll-guide.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
-import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking } from './data.js';
+import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking, adminCreatePhoneAccount, isProvisionedAdminAccount } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
 
@@ -232,7 +232,7 @@ function authPanel(title = 'Entre para continuar') {
     <p class="auth-description">Entre para acompanhar suas reservas em qualquer aparelho.</p>
     <form class="auth-form">
       <label class="register-name" hidden>Nome<input name="name" autocomplete="username" minlength="2" maxlength="80" placeholder="Escolha seu nome de acesso" disabled /></label>
-      <label class="login-identifier" data-login-only>Nome ou e-mail<input name="email" autocomplete="username" maxlength="254" placeholder="Seu nome de acesso ou e-mail" required /></label>
+      <label class="login-identifier" data-login-only>Nome, telefone ou e-mail<input name="email" autocomplete="username" maxlength="254" placeholder="Seu nome, telefone ou e-mail" required /></label>
       <label>Senha<input type="password" name="password" autocomplete="current-password" minlength="6" placeholder="Sua senha" required /></label>
       <button class="forgot-password" type="button" data-login-only>Esqueci minha senha</button>
       <p class="form-error" role="alert" hidden></p>
@@ -1383,10 +1383,17 @@ function renderProfile() {
   const holder = app.querySelector('#profile-content');
   authReady.then(async () => {
     if (!holder.isConnected) return;
-    if (!currentUser()) { holder.innerHTML = authPanel('Entre ou crie sua conta'); bindAuth(holder, renderProfile); return; }
+    if (!currentUser()) {
+      holder.innerHTML = authPanel('Entre ou crie sua conta');
+      bindAuth(holder, async () => {
+        try { await adminFetch(); location.hash = '#/gestao'; }
+        catch { renderProfile(); }
+      });
+      return;
+    }
+    try { await adminFetch(); location.hash = '#/gestao'; return; } catch { /* conta de cliente */ }
     holder.innerHTML = `<div class="profile-card">${icon('user', 34)}<h2>${escapeHtml(currentUser().displayName || currentUser().email.split('@')[0])}</h2><p>${escapeHtml(accountLabel(currentUser()))}</p><a href="#/reservas">Minhas reservas ${icon('arrowRight', 18)}</a><div id="agency-link"></div><button id="profile-logout" type="button">Sair da conta</button></div>`;
     holder.querySelector('#profile-logout').addEventListener('click', async () => { await logout(); renderProfile(); });
-    try { await adminFetch(); if (holder.isConnected) holder.querySelector('#agency-link').innerHTML = '<a href="#/gestao">Área da Janu Turismo →</a>'; } catch { /* conta de cliente */ }
   });
 }
 
@@ -1655,10 +1662,48 @@ async function loadAdmin() {
     const next = bookings.filter(booking => { const deadline = reservationDeadline(booking, TRIPS); return deadline === null || Date.now() < deadline; }).map(booking => booking.id).join('|');
     if (next !== visibleBookings && content.isConnected) { visibleBookings = next; loadAdmin().catch(() => showToast('Não foi possível atualizar as reservas.')); }
   });
-  content.innerHTML = `<div class="admin-management-tabs" role="tablist" aria-label="Gestão"><button type="button" data-admin-tab="trips" class="${adminActiveTab === 'trips' ? 'is-active' : ''}">Viagens e vagas</button><button type="button" data-admin-tab="bookings" class="${adminActiveTab === 'bookings' ? 'is-active' : ''}">Reservas</button></div><div class="admin-tab-panel" data-admin-panel="trips" ${adminActiveTab === 'trips' ? '' : 'hidden'}><div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="refresh-admin">Atualizar</button><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Pedidos sem vagas configuradas aguardam confirmação. Defina a capacidade real para separar lugares e confirmar pagamentos. Ao pausar uma viagem, novos pedidos ficam bloqueados.</p><div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => { const catalogTrip = TRIPS.find(item => item.id === trip.id); const ended = catalogTrip && isTripPast(catalogTrip); return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}"><div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div><span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}${!trip.demo && trip.available > 0 && trip.available <= 5 ? ` · ⚠️ Últimas ${trip.available} vagas` : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`; }).join('')}</div><div id="admin-editor-slot"></div>
+  const provisionedAdmin = await isProvisionedAdminAccount().catch(() => true);
+  const accessSetup = provisionedAdmin ? '' : `<section class="admin-access-setup">
+    <div><span class="section-kicker">ACESSO DA JANU</span><h2>Ativar login da administradora</h2><p>O login será feito na mesma tela dos clientes. Para a Janu, o telefone identifica a conta e, depois de entrar, ela será enviada diretamente para esta área administrativa.</p></div>
+    <form id="admin-phone-access-form">
+      <label>Telefone<input name="phone" type="tel" value="88 8873-7924" readonly /></label>
+      <label>Defina a senha<input name="password" type="password" minlength="6" autocomplete="new-password" placeholder="Mínimo de 6 caracteres" required /></label>
+      <label>Repita a senha<input name="confirmPassword" type="password" minlength="6" autocomplete="new-password" placeholder="Digite a senha novamente" required /></label>
+      <p class="form-error" role="alert" hidden></p>
+      <button type="submit">Criar acesso da Janu</button>
+    </form>
+    <small>A senha é definida aqui no navegador e não precisa ser enviada pelo chat.</small>
+  </section>`;
+  content.innerHTML = `${accessSetup}<div class="admin-management-tabs" role="tablist" aria-label="Gestão"><button type="button" data-admin-tab="trips" class="${adminActiveTab === 'trips' ? 'is-active' : ''}">Viagens e vagas</button><button type="button" data-admin-tab="bookings" class="${adminActiveTab === 'bookings' ? 'is-active' : ''}">Reservas</button></div><div class="admin-tab-panel" data-admin-panel="trips" ${adminActiveTab === 'trips' ? '' : 'hidden'}><div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="refresh-admin">Atualizar</button><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Pedidos sem vagas configuradas aguardam confirmação. Defina a capacidade real para separar lugares e confirmar pagamentos. Ao pausar uma viagem, novos pedidos ficam bloqueados.</p><div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => { const catalogTrip = TRIPS.find(item => item.id === trip.id); const ended = catalogTrip && isTripPast(catalogTrip); return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}"><div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div><span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}${!trip.demo && trip.available > 0 && trip.available <= 5 ? ` · ⚠️ Últimas ${trip.available} vagas` : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`; }).join('')}</div><div id="admin-editor-slot"></div>
     <section class="manual-section"><h2>Adicionar reserva recebida pelo WhatsApp</h2><p>O passageiro ocupa as vagas imediatamente. Informe o nome de acesso ou e-mail usado no site para vincular à conta dele.</p><form id="manual-booking" class="admin-editor"><label>Viagem<select name="tripId" required>${upcomingTrips().map(trip => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.title)} · ${escapeHtml(trip.date)}</option>`).join('')}</select></label><div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div><div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div><div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div><label>Nome de acesso ou e-mail do cliente (opcional)<input name="identifier" type="text" placeholder="Para aparecer em Minhas reservas" /></label><button type="submit">Salvar passageiro e descontar vagas</button><p id="manual-error" class="form-error" hidden></p></form></section></div><div class="admin-tab-panel" data-admin-panel="bookings" ${adminActiveTab === 'bookings' ? '' : 'hidden'}><section class="admin-reservations-overview"><h2>Reservas por viagem</h2><p>Abra uma viagem para ver clientes, pagamentos e vagas.</p><div class="admin-reservation-trips">${adminReservationsByTripMarkup(trips, bookings)}</div></section>
     <section class="passengers-admin"><div class="admin-section-heading"><div><h2>Passageiros por viagem</h2><p>Lista agrupada por embarque. Cópia e CSV não incluem o CPF completo.</p></div></div><div class="passengers-admin-list">${passengerGroupsMarkup(bookings)}</div></section>
     <h2>Últimas reservas</h2><div class="admin-bookings">${bookings.length ? bookings.map(booking => `<article><strong>${escapeHtml(booking.id)} · ${escapeHtml(booking.tripTitle || tripName(booking.tripId))}</strong><p>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)} · CPF final ${escapeHtml(booking.cpfLast4)} · ${escapeHtml(booking.phone)}</p><p>${booking.seats} passageiros · ${booking.source === 'whatsapp' ? 'WhatsApp · ' : ''}${paymentLabel(booking.payment)} · ${escapeHtml(statusLabel(booking.status))}${Number.isInteger(booking.totalCents) ? ` · ${money(booking.totalCents / 100)} · ${escapeHtml(booking.fareLabel)} × ${booking.quantity}` : ''}</p>${booking.status === 'pending' ? `<button class="admin-paid-button" data-action="confirmed" data-id="${booking.id}">Confirmar pagamento e reserva</button>` : ''}${booking.status !== 'cancelled' ? `<button data-action="cancelled" data-id="${booking.id}">Cancelar reserva</button><a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">Falar com o cliente</a>` : ''}<button class="admin-delete-button" data-delete-booking="${booking.id}">Apagar reserva</button></article>`).join('') : '<p>Nenhuma reserva registrada.</p>'}</div></div>`;
+  const adminAccessForm = content.querySelector('#admin-phone-access-form');
+  adminAccessForm?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const error = form.querySelector('.form-error');
+    const submit = form.querySelector('[type="submit"]');
+    const password = String(form.elements.password.value || '');
+    const confirmation = String(form.elements.confirmPassword.value || '');
+    error.hidden = true;
+    if (password !== confirmation) {
+      error.textContent = 'As duas senhas precisam ser iguais.';
+      error.hidden = false;
+      form.elements.confirmPassword.focus();
+      return;
+    }
+    submit.disabled = true;
+    try {
+      await adminCreatePhoneAccount({ phone: form.elements.phone.value, password });
+      showToast('Acesso da Janu criado. Ela já pode entrar com telefone e senha.');
+      await loadAdmin();
+    } catch (problem) {
+      error.textContent = problem.message;
+      error.hidden = false;
+      submit.disabled = false;
+    }
+  });
   content.querySelectorAll('[data-admin-tab]').forEach(button => button.addEventListener('click', () => {
     adminActiveTab = button.dataset.adminTab;
     content.querySelectorAll('[data-admin-tab]').forEach(item => item.classList.toggle('is-active', item === button));
