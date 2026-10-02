@@ -1,0 +1,64 @@
+name: Optimize assets once
+
+on:
+  push:
+    paths:
+      - ".github/workflows/optimize-assets.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  optimize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Pillow
+        run: python -m pip install --quiet pillow
+      - name: Optimize images
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          assets = Path("assets")
+
+          logo_src = assets / "logo-janu.png"
+          logo_out = assets / "logo-janu.webp"
+          if logo_src.exists():
+              image = Image.open(logo_src).convert("RGBA")
+              width = 520
+              if image.width > width:
+                  height = round(image.height * width / image.width)
+                  image = image.resize((width, height), Image.Resampling.LANCZOS)
+              for quality in (50, 46, 42, 38, 34):
+                  image.save(logo_out, "WEBP", quality=quality, method=4)
+                  if logo_out.stat().st_size <= 40000:
+                      break
+              logo_src.unlink()
+
+          for path in assets.glob("*.webp"):
+              if path.name == "logo-janu.webp":
+                  continue
+              image = Image.open(path).convert("RGB")
+              if image.width > 900:
+                  height = round(image.height * 900 / image.width)
+                  image = image.resize((900, height), Image.Resampling.LANCZOS)
+              for quality in (78, 74, 70, 66, 62, 58, 54, 50):
+                  image.save(path, "WEBP", quality=quality, method=4)
+                  if path.stat().st_size <= 120000:
+                      break
+          PY
+      - name: Commit optimized assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets
+          if ! git diff --cached --quiet; then
+            git commit -m "Optimize image assets"
+            git push
+          fi
