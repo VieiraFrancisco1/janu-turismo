@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "target": "publico",
+    "site": "janu-turismo-ce",
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
   },
