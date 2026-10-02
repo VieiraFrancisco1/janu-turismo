@@ -784,3 +784,255 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
   }
   .hero h2 { font-size: 46px; max-width: 500px; }
 }
+
+
+/* ETAPA C: reserva via WhatsApp e calculadora */
+.detail-page-whatsapp {
+  padding-bottom: 116px;
+}
+.booking-config-section {
+  margin: 22px 0 8px;
+  padding: 18px;
+  border: 1px solid #d8e6f4;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(13, 50, 85, .06);
+}
+.booking-config-heading h2 {
+  margin: 4px 0 5px;
+  color: var(--navy);
+  font-size: 24px;
+}
+.booking-config-heading p {
+  margin: 0 0 16px;
+  color: #596f88;
+  font-size: 13px;
+  line-height: 1.45;
+}
+#trip-booking-config {
+  display: grid;
+  gap: 14px;
+}
+#trip-booking-config label:not(.policy-check) {
+  display: grid;
+  gap: 7px;
+  color: #17395f;
+  font-size: 13px;
+  font-weight: 750;
+}
+#trip-booking-config select,
+#trip-booking-config input[type="number"],
+#trip-booking-config input[name="boarding"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid #c9d9e8;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--navy);
+  font: inherit;
+}
+.booking-config-grid {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+}
+.people-count {
+  margin: -5px 0 0;
+  color: #56708b;
+  font-size: 12px;
+  font-weight: 650;
+}
+.child-rule {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px;
+  border: 1px solid #f4dda0;
+  border-radius: 12px;
+  background: #fff9e9;
+  color: #654d1f;
+}
+.child-rule svg {
+  flex: 0 0 auto;
+  color: #c9890e;
+}
+.child-rule strong,
+.child-rule span {
+  display: block;
+}
+.child-rule strong {
+  font-size: 13px;
+}
+.child-rule span {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.booking-total-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 2px 12px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #edf6ff;
+}
+.booking-total-card > span {
+  color: #49647f;
+  font-size: 12px;
+  font-weight: 700;
+}
+.booking-total-card > strong {
+  color: var(--blue);
+  font-size: 26px;
+  letter-spacing: -.04em;
+}
+.booking-total-card > small {
+  grid-column: 1 / -1;
+  color: #667b91;
+  font-size: 11px;
+}
+.payment-calculator {
+  padding: 14px;
+  border: 1px solid #e0e9f1;
+  border-radius: 14px;
+  background: #fbfdff;
+}
+.payment-calculator h3 {
+  margin: 0 0 9px;
+  color: var(--navy);
+  font-size: 15px;
+}
+.payment-calc-option {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid #edf1f5;
+}
+.payment-calc-option:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.payment-calc-option:last-child {
+  padding-bottom: 0;
+}
+.payment-calc-option strong {
+  color: #123a67;
+  font-size: 13px;
+}
+.payment-calc-option span {
+  color: #5e7289;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
+}
+.policy-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-height: 44px;
+  color: #415a75;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.policy-check input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin: 1px 0 0;
+}
+.policy-check a {
+  color: #075fc6;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.package-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+}
+.package-column {
+  padding: 0;
+}
+.package-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 13px;
+  border: 1px solid #e1eaf3;
+  border-radius: 14px;
+  background: #fff;
+}
+.package-list li {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-top: 1px solid #edf2f6;
+  color: #36516e;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.package-list li:first-child {
+  border-top: 0;
+}
+.package-list-included svg {
+  color: #148044;
+}
+.package-list-not-included svg {
+  color: #b94a45;
+}
+.policy-summary {
+  scroll-margin-top: 76px;
+  padding: 16px;
+  border-radius: 15px;
+  background: #f5f8fc;
+  border: 1px solid #dce6f0;
+}
+.policy-summary h2 {
+  margin-top: 4px;
+}
+.policy-summary ul {
+  margin: 0;
+  padding-left: 19px;
+  color: #4d647d;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.whatsapp-booking-bar {
+  z-index: 70;
+}
+.whatsapp-booking-bar .booking-inner > div {
+  min-width: 0;
+}
+.whatsapp-booking-bar [data-booking-people] {
+  display: block;
+  overflow: hidden;
+  color: #667b91;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.whatsapp-booking-bar button {
+  background: #0a9d49;
+  color: #fff;
+}
+.whatsapp-booking-bar button:hover {
+  background: #07823c;
+}
+
+@media (min-width: 700px) {
+  .booking-config-section {
+    padding: 22px;
+  }
+  .package-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .package-grid .detail-section {
+    margin-top: 24px;
+  }
+}

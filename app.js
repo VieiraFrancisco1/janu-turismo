@@ -1,4 +1,4 @@
-import { PASSEIOS_SEED, adaptarPasseioParaApp } from './catalogo.js';
+import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
 import { configured, authReady, currentUser, login, logout, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
@@ -436,84 +436,150 @@ function renderTrips() {
   refreshInventory();
 }
 
+function optionPeopleCount(fare, quantity) {
+  return Math.max(1, Number(fare?.seats || 1)) * Math.max(1, Number(quantity || 1));
+}
+
+function paymentCalculatorMarkup(trip, fare, quantity) {
+  const total = Number(fare.amount || 0) * Math.max(1, Number(quantity || 1));
+  const parts = [];
+
+  if (trip.pagamento?.pix) {
+    const pixMax = Math.max(1, parcelasDisponiveis(trip, fare, new Date()));
+    parts.push(`<div class="payment-calc-option"><strong>Pix</strong><span>${pixMax > 1 ? `em até ${pixMax}x de ${money(total / pixMax)}` : money(total)}</span></div>`);
+  } else if ((trip.payment || []).some(method => /pix/i.test(method))) {
+    parts.push(`<div class="payment-calc-option"><strong>Pix</strong><span>Condições confirmadas pela Janu</span></div>`);
+  }
+
+  if (trip.pagamento?.cartao || (trip.payment || []).some(method => /cart[aã]o/i.test(method))) {
+    const card = trip.pagamento?.cartao || {};
+    const max = Number(card.maxParcelas || 0);
+    const surchargeKnown = card.acrescimoPercentual !== null && card.acrescimoPercentual !== undefined && Number.isFinite(Number(card.acrescimoPercentual));
+    if (surchargeKnown) {
+      const adjusted = total * (1 + Number(card.acrescimoPercentual) / 100);
+      parts.push(`<div class="payment-calc-option"><strong>Cartão</strong><span>${max > 1 ? `até ${max}x de ${money(adjusted / max)} · ` : ''}${Number(card.acrescimoPercentual)}% de acréscimo · total ${money(adjusted)}</span></div>`);
+    } else {
+      parts.push(`<div class="payment-calc-option"><strong>Cartão</strong><span>${max > 1 ? `até ${max}x · ` : ''}acréscimo a confirmar com a Janu</span></div>`);
+    }
+  }
+
+  return parts.length ? parts.join('') : '<div class="payment-calc-option"><strong>Pagamento</strong><span>Condições confirmadas pela Janu</span></div>';
+}
+
 function detailSections(trip) {
-  return `<div class="detail-lead"><p>${trip.blurb}</p></div>
-    <section class="detail-section"><h2>Valores da viagem</h2><div class="price-options">${fares(trip).map(fare => `<div><span>${escapeHtml(fare.label)}${fare.boardingCity ? ` · saída ${escapeHtml(fare.boardingCity)}` : ''}</span><strong>${money(fare.amount)}</strong></div>`).join('')}</div><p class="section-note">O valor final e o pagamento são confirmados pela agência.</p></section>
-    <section class="detail-section"><h2>Horários</h2><div class="pending-info">${icon('calendar', 22)}<span>${trip.startTime ? `Saída: ${escapeHtml(trip.startTime)}` : 'Saída: a confirmar'} · ${trip.arrivalTime ? `Chegada: ${escapeHtml(trip.arrivalTime)}` : 'Chegada: a confirmar'}</span></div></section>
-    ${trip.includes.length ? `<section class="detail-section"><h2>O que está incluso</h2><ul class="includes-list">${trip.includes.map(([glyph, label]) => `<li>${icon(paths[glyph] ? glyph : 'check', 24)}<span>${escapeHtml(label)}</span></li>`).join('')}</ul></section>` : ''}
-    ${trip.stops.length ? `<section class="detail-section"><h2>Roteiro do passeio</h2><ol class="stops-list">${trip.stops.map(([name, note], index) => `<li><span class="stop-number">${String(index + 1).padStart(2, '0')}</span><span><strong>${escapeHtml(name)}</strong>${note ? `<small>${escapeHtml(note)}</small>` : ''}</span></li>`).join('')}</ol></section>` : ''}
-    ${trip.notice ? `<p class="notice">${escapeHtml(trip.notice)}</p>` : ''}
-    <section class="detail-section"><h2>Embarque</h2>${trip.boarding.length ? `<div class="boarding-options">${trip.boarding.map(place => `<span>${icon('pin', 17)} ${escapeHtml(place)}</span>`).join('')}</div>` : `<div class="pending-info">${icon('pin', 22)}<span>Local de embarque a confirmar com a agência.</span></div>`}</section>
-    ${trip.payment?.length ? `<p class="payment-info">Formas de pagamento: ${trip.payment.map(escapeHtml).join(' ou ')}.</p>` : ''}`;
+  const included = trip.incluso || (trip.includes || []).map(item => item[1]);
+  const notIncluded = trip.naoIncluso || [];
+  const route = trip.roteiro || (trip.stops || []).map(item => item[0]);
+
+  return `<div class="detail-lead">${trip.blurb ? `<p>${escapeHtml(trip.blurb)}</p>` : ''}</div>
+    <div class="package-grid">
+      <section class="detail-section package-column"><h2>O que está incluso</h2>${included.length ? `<ul class="package-list package-list-included">${included.map(label => `<li>${icon('check', 19)}<span>${escapeHtml(label)}</span></li>`).join('')}</ul>` : '<p class="section-note">Itens inclusos não informados.</p>'}</section>
+      <section class="detail-section package-column"><h2>Não incluso</h2>${notIncluded.length ? `<ul class="package-list package-list-not-included">${notIncluded.map(label => `<li>${icon('close', 18)}<span>${escapeHtml(label)}</span></li>`).join('')}</ul>` : '<p class="section-note">Não informado no anúncio.</p>'}</section>
+    </div>
+    ${route.length ? `<section class="detail-section"><h2>Roteiro do passeio</h2><ol class="stops-list">${route.map((name, index) => `<li><span class="stop-number">${String(index + 1).padStart(2, '0')}</span><span><strong>${escapeHtml(name)}</strong></span></li>`).join('')}</ol></section>` : ''}
+    <section class="detail-section"><h2>Embarques</h2>${trip.boarding.length ? `<div class="boarding-options">${trip.boarding.map(place => `<span>${icon('pin', 17)} ${escapeHtml(place)}</span>`).join('')}</div>` : `<div class="pending-info">${icon('pin', 22)}<span>Cidades de embarque a confirmar com a agência.</span></div>`}</section>
+    <section class="detail-section policy-summary" id="policy-summary"><span class="section-kicker">ANTES DE RESERVAR</span><h2>Resumo das políticas</h2><ul><li>Reserva efetivada mediante pagamento parcial no ato.</li><li>O restante deve ser quitado até 48h antes do passeio.</li><li>Pagamento por Pix ou cartão; condições de parcelamento variam conforme o passeio.</li><li>Cancelamentos seguem as condições e prazos da Janu Turismo; confira as regras antes de concluir.</li></ul></section>`;
 }
 
 function renderDetail(id) {
   const trip = TRIPS.find(item => item.id === id);
-  if (!trip || !trip.published) { location.hash = '#/viagens'; return; }
+  if (!trip || !trip.published || isTripPast(trip)) { location.hash = '#/viagens'; return; }
+
+  const fareOptions = fares(trip);
+  const galleryImages = [...new Set([trip.image, ...(trip.images || [])].filter(Boolean))];
   const boardingField = trip.boarding.length
-    ? `<select name="boarding"><option value="">A combinar</option>${trip.boarding.map(place => `<option value="${escapeHtml(place)}">${escapeHtml(place)}</option>`).join('')}</select>`
-    : '<input name="boarding" maxlength="80" placeholder="A combinar com a agência" />';
+    ? `<select name="boarding" required><option value="">Escolha o embarque</option>${trip.boarding.map(place => `<option value="${escapeHtml(place)}">${escapeHtml(place)}</option>`).join('')}</select>`
+    : '<input name="boarding" maxlength="80" placeholder="Cidade de embarque" required />';
+
   app.innerHTML = `<header class="detail-header wrap"><a href="#/viagens" aria-label="Voltar às viagens">${icon('arrowLeft', 26)}</a><span>Detalhes da viagem</span><button type="button" id="share" aria-label="Compartilhar viagem">${icon('share', 25)}</button></header>
-    <main class="wrap detail-page" id="main"><div class="detail-hero"><img class="detail-cover" src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" /><div class="detail-hero-shade"></div><div class="detail-hero-text"><span>${escapeHtml(trip.kind)}</span><h1>${escapeHtml(trip.title)}</h1><p>${icon('calendar', 19)} ${escapeHtml(trip.date)}</p></div></div>
-      <div class="detail-body">${trip.images?.length > 1 ? `<div class="detail-gallery">${trip.images.map((src, i) => `<button type="button" data-gallery="${i}" aria-label="Ver foto ${i + 1}"><img src="${src}" alt="Foto ${i + 1} de ${escapeHtml(trip.title)}" /></button>`).join('')}</div>` : ''}<div class="availability-panel">${icon('ticket', 22)}<div><strong data-seats="${trip.id}">${seatsText(trip.id)}</strong><small>As vagas são atualizadas quando uma reserva é concluída.</small></div></div>${detailSections(trip)}<a class="inline-contact" href="${waLink(`Olá, Janu Turismo! Tenho uma dúvida sobre ${trip.title}.`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Qualquer dúvida? Fale com a Janu</a></div></main>
-    <div class="booking-bar"><div class="booking-inner"><div><small>A partir de</small><strong>${money(trip.price)}</strong><span>por pessoa</span></div><button type="button" id="reserve" data-trip="${trip.id}" disabled>${icon('ticket', 24)}<span>Fazer reserva</span></button></div></div>
-    <dialog id="auth-dialog" aria-label="Acessar conta"><button class="auth-close" type="button" aria-label="Fechar">${icon('close', 22)}</button>${authPanel('Entre para reservar')}</dialog>
-    <dialog id="reserve-dialog" aria-labelledby="reserve-title"><form id="reservation-form"><div class="dialog-heading"><div><span class="section-kicker">Janu Turismo</span><h2 id="reserve-title">Sua reserva</h2></div><button type="button" id="close-dialog" aria-label="Fechar">${icon('close', 22)}</button></div><p>${escapeHtml(trip.title)} • ${escapeHtml(trip.date)}</p>
-      <div class="form-grid"><label>Nome<input name="firstName" required autocomplete="given-name" maxlength="60" placeholder="Seu nome" /></label><label>Sobrenome<input name="lastName" required autocomplete="family-name" maxlength="80" placeholder="Seu sobrenome" /></label></div>
-      <label>CPF<input name="cpf" required inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00" /></label>
-      <label>Telefone com DDD<input name="phone" type="tel" required autocomplete="tel" inputmode="tel" maxlength="16" placeholder="(88) 99999-9999" /></label>
-      <label>Valor / modalidade<select name="fare" required>${fares(trip).map((fare, index) => `<option value="${index}">${escapeHtml(fare.label)} · ${money(fare.amount)}${fare.seats > 1 ? ` / ${fare.seats} pessoas` : ''}${fare.boardingCity ? ` · ${escapeHtml(fare.boardingCity)}` : ''}</option>`).join('')}</select></label>
-      <div class="form-grid"><label>Passageiros<input name="seats" type="number" min="1" max="10" value="1" required inputmode="numeric" /></label><label>Pagamento<select name="payment" required><option value="">Escolha</option>${(trip.payment?.length ? trip.payment : ['Pix', 'Cartão']).map(method => `<option value="${/cart[aã]o/i.test(method) ? 'cartao' : 'pix'}">${escapeHtml(method)}</option>`).join('')}</select></label></div>
-      <label>Embarque desejado${boardingField}</label>
-      <p class="dialog-note">Escolher Pix ou cartão não efetua o pagamento. A Janu confirmará os detalhes com você.</p>
-      <label class="privacy-check"><input type="checkbox" name="consent" required /><span>Autorizo o uso dos meus dados para esta reserva e o contato da Janu Turismo.</span></label>
-      <p id="form-error" class="form-error" role="alert" hidden></p><button class="dialog-submit" type="submit">Confirmar reserva ${icon('arrowRight', 19)}</button>
-    </form></dialog>`;
+    <main class="wrap detail-page detail-page-whatsapp" id="main">
+      <div class="detail-hero"><img class="detail-cover" src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" /><div class="detail-hero-shade"></div><div class="detail-hero-text"><span>${escapeHtml(trip.kind)}</span><h1>${escapeHtml(trip.title)}</h1><p>${icon('calendar', 19)} ${escapeHtml(trip.date)}${trip.duracao ? ` · ${escapeHtml(trip.duracao)}` : ''}</p></div></div>
+      <div class="detail-body">
+        ${galleryImages.length > 1 ? `<div class="detail-gallery" aria-label="Galeria de fotos">${galleryImages.map((src, i) => `<button type="button" data-gallery="${i}" aria-label="Ver foto ${i + 1}"><img src="${src}" alt="Foto ${i + 1} de ${escapeHtml(trip.title)}" loading="lazy" decoding="async" /></button>`).join('')}</div>` : ''}
+        <div class="availability-panel">${icon('ticket', 22)}<div><strong data-seats="${trip.id}">${seatsText(trip.id)}</strong><small>A Janu confirma a disponibilidade final pelo WhatsApp.</small></div></div>
+
+        <section class="booking-config-section" aria-labelledby="booking-config-title">
+          <div class="booking-config-heading"><span class="section-kicker">MONTE SUA RESERVA</span><h2 id="booking-config-title">Escolha sua opção</h2><p>Você não precisa criar conta. Configure abaixo e envie o pedido direto para a Janu.</p></div>
+          <form id="trip-booking-config">
+            <label>Opção de preço<select name="fare" required>${fareOptions.map((fare, index) => `<option value="${index}">${escapeHtml(fare.label)} · ${money(fare.amount)}${fare.seats > 1 ? ` · ${fare.seats} pessoas` : ''}</option>`).join('')}</select></label>
+            <div class="booking-config-grid">
+              <label>Quantidade<input name="quantity" type="number" min="1" max="10" value="1" inputmode="numeric" required /></label>
+              <label>Embarque${boardingField}</label>
+            </div>
+            <p class="people-count" data-people-count></p>
+            ${trip.regraCrianca ? `<div class="child-rule">${icon('user', 20)}<div><strong>Regra para crianças</strong><span>${escapeHtml(trip.regraCrianca)}</span></div></div>` : ''}
+            <div class="booking-total-card"><span>Valor total</span><strong data-config-total>${money(fareOptions[0]?.amount || 0)}</strong><small>O valor considera a opção e a quantidade escolhidas.</small></div>
+            <div class="payment-calculator"><h3>Formas de pagamento</h3><div data-payment-calculator></div></div>
+            <label class="policy-check"><input type="checkbox" name="policies" required /><span>Li e aceito as <a href="#policy-summary" data-policy-link>políticas de reserva</a> e <a href="#policy-summary" data-policy-link>cancelamento</a>.</span></label>
+          </form>
+        </section>
+
+        ${detailSections(trip)}
+        <a class="inline-contact" href="${waLink(`Olá, Janu Turismo! Tenho uma dúvida sobre ${trip.title}.`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Tirar uma dúvida com a Janu</a>
+      </div>
+    </main>
+    <div class="booking-bar whatsapp-booking-bar"><div class="booking-inner"><div><small>Total</small><strong data-booking-total>${money(fareOptions[0]?.amount || 0)}</strong><span data-booking-people></span></div><button type="submit" form="trip-booking-config" id="whatsapp-reserve">${icon('whatsapp', 24)}<span>Reservar</span></button></div></div>`;
+
   app.querySelector('#share').addEventListener('click', () => shareTrip(trip));
-  app.querySelectorAll('[data-gallery]').forEach(button => button.onclick = () => { app.querySelector('.detail-cover').src = trip.images[Number(button.dataset.gallery)]; });
-  const dialog = app.querySelector('#reserve-dialog');
-  const authDialog = app.querySelector('#auth-dialog');
-  const fareSelect = dialog.querySelector('[name="fare"]');
-  const seatInput = dialog.querySelector('[name="seats"]');
-  fareSelect.addEventListener('change', () => { const fare = fares(trip)[Number(fareSelect.value)]; seatInput.value = fare.seats || 1; seatInput.readOnly = fare.seats > 1; if (fare.boardingCity) dialog.querySelector('[name="boarding"]').value = fare.boardingCity; });
-  app.querySelector('#reserve').addEventListener('click', async () => {
-    await authReady;
-    if (currentUser()) dialog.showModal(); else authDialog.showModal();
+  app.querySelectorAll('[data-gallery]').forEach(button => {
+    button.addEventListener('click', () => {
+      app.querySelector('.detail-cover').src = galleryImages[Number(button.dataset.gallery)];
+    });
   });
-  authDialog.querySelector('.auth-close').addEventListener('click', () => authDialog.close());
-  bindAuth(authDialog, () => { authDialog.close(); dialog.showModal(); });
-  app.querySelector('#close-dialog').addEventListener('click', () => dialog.close());
-  dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
-  app.querySelector('#reservation-form').addEventListener('submit', async event => {
+
+  app.querySelectorAll('[data-policy-link]').forEach(link => link.addEventListener('click', event => {
     event.preventDefault();
-    if (!event.target.reportValidity()) return;
-    const data = new FormData(event.target);
-    const chosenFare = fares(trip)[Number(data.get('fare'))];
-    const body = { tripId: trip.id, firstName: String(data.get('firstName')).trim(), lastName: String(data.get('lastName')).trim(), cpf: String(data.get('cpf')), phone: String(data.get('phone')), seats: Number(data.get('seats')), fareLabel: chosenFare.label, payment: String(data.get('payment')), boarding: String(data.get('boarding')).trim(), consent: data.get('consent') === 'on' };
-    const errorEl = app.querySelector('#form-error');
-    const submit = event.target.querySelector('button[type="submit"]');
-    errorEl.hidden = true;
-    if (chosenFare.boardingCity && body.boarding !== chosenFare.boardingCity) { errorEl.textContent = `Selecione o embarque em ${chosenFare.boardingCity} para este valor.`; errorEl.hidden = false; return; }
-    if (!validCpfClient(body.cpf)) { errorEl.textContent = 'Confira o CPF informado.'; errorEl.hidden = false; return; }
-    const state = inventory[trip.id];
-    if (!inventoryReady || !state || state.demo || !state.enabled) { errorEl.textContent = 'Esta viagem ainda não está liberada para reservas.'; errorEl.hidden = false; return; }
-    submit.disabled = true;
-    submit.textContent = 'Registrando reserva…';
-    try {
-      const payload = await createBooking(body);
-      lastBooking = { ...payload, token: payload.booking.id, cpf: body.cpf.replace(/\D/g, '') };
-      dialog.close();
-      location.hash = `#/reserva/${payload.booking.id}`;
-    } catch (error) {
-      errorEl.textContent = error.message; errorEl.hidden = false;
-      submit.disabled = false; submit.innerHTML = `Confirmar reserva ${icon('arrowRight', 19)}`;
-      refreshInventory();
+    app.querySelector('#policy-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+
+  const form = app.querySelector('#trip-booking-config');
+  const fareSelect = form.querySelector('[name="fare"]');
+  const quantityInput = form.querySelector('[name="quantity"]');
+  const totalInside = form.querySelector('[data-config-total]');
+  const totalBar = app.querySelector('[data-booking-total]');
+  const peopleInside = form.querySelector('[data-people-count]');
+  const peopleBar = app.querySelector('[data-booking-people]');
+  const paymentBox = form.querySelector('[data-payment-calculator]');
+
+  const updateBookingSummary = () => {
+    const fare = fareOptions[Number(fareSelect.value)] || fareOptions[0];
+    const quantity = Math.max(1, Number(quantityInput.value || 1));
+    const people = optionPeopleCount(fare, quantity);
+    const total = Number(fare.amount || 0) * quantity;
+    const peopleText = `${people} ${people === 1 ? 'pessoa' : 'pessoas'}`;
+    totalInside.textContent = money(total);
+    totalBar.textContent = money(total);
+    peopleInside.textContent = `${quantity} ${quantity === 1 ? 'opção' : 'opções'} · ${peopleText}`;
+    peopleBar.textContent = peopleText;
+    paymentBox.innerHTML = paymentCalculatorMarkup(trip, fare, quantity);
+
+    if (fare.boardingCity) {
+      const boarding = form.querySelector('[name="boarding"]');
+      if (boarding?.tagName === 'SELECT') boarding.value = fare.boardingCity;
     }
+  };
+
+  fareSelect.addEventListener('change', updateBookingSummary);
+  quantityInput.addEventListener('input', updateBookingSummary);
+  updateBookingSummary();
+
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+
+    const fare = fareOptions[Number(fareSelect.value)] || fareOptions[0];
+    const quantity = Math.max(1, Number(quantityInput.value || 1));
+    const people = optionPeopleCount(fare, quantity);
+    const total = Number(fare.amount || 0) * quantity;
+    const boarding = String(new FormData(form).get('boarding') || '').trim();
+
+    const message = `Olá! Tenho interesse no passeio ${trip.title} (${trip.date}). Opção: ${fare.label} · ${people} pessoa(s) · Embarque: ${boarding}. Valor total: ${money(total)}. Pode confirmar vagas?`;
+    window.open(waLink(message), '_blank', 'noopener,noreferrer');
   });
+
   document.title = `${trip.title} | Janu Turismo`;
   refreshInventory();
 }
-
 function validCpfClient(value) {
   const cpf = String(value).replace(/\D/g, '');
   if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
