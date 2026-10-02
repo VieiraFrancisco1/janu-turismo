@@ -66,6 +66,7 @@ const paths = {
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3-7 8-7s8 3 8 7"/>',
   card: '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
 };
 
 function icon(name, size = 24) {
@@ -160,6 +161,23 @@ function updateAvailabilityUI() {
     const seed = [...trip.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
     el.textContent = `${examples[seed % examples.length]} vagas · exemplo`;
     el.classList.add('is-demo');
+  });
+
+  document.querySelectorAll('[data-reservation-count]').forEach(el => {
+    const state = inventory[el.dataset.reservationCount];
+    if (!inventoryReady || !state || state.demo) {
+      el.textContent = 'Quantidade de reservas a confirmar';
+    } else {
+      const count = Number(state.reserved || 0);
+      el.textContent = `${count} ${count === 1 ? 'reserva registrada' : 'reservas registradas'}`;
+    }
+  });
+
+  document.querySelectorAll('[data-low-stock-warning]').forEach(el => {
+    const state = inventory[el.dataset.lowStockWarning];
+    const show = inventoryReady && state && !state.demo && state.available > 0 && state.available <= 5;
+    el.hidden = !show;
+    if (show) el.textContent = `⚠️ Atenção: restam apenas ${state.available} ${state.available === 1 ? 'vaga' : 'vagas'}.`;
   });
 
   document.querySelectorAll('[data-minimum-progress]').forEach(holder => {
@@ -394,9 +412,24 @@ async function loadCatalog() {
 
 function header() {
   return `<header class="site-header wrap">
+    <button class="header-menu-button" type="button" data-menu-toggle aria-label="Abrir menu">${icon('menu', 25)}</button>
     <a class="brand" href="#/" aria-label="Janu Turismo — início"><img src="./assets/logo-janu.webp" alt="Janu Turismo — Levando você aos melhores destinos" /></a>
-    <a class="profile-link" href="#/perfil" aria-label="${currentUser() ? 'Abrir meu perfil' : 'Fazer login'}">${icon('user', 23)}<span>${escapeHtml(currentUser()?.displayName?.split(' ')[0] || (currentUser() ? currentUser().email.split('@')[0] : 'Login'))}</span></a>
-  </header>`;
+    <a class="profile-link profile-icon-only" href="#/perfil" aria-label="${currentUser() ? 'Abrir meu perfil' : 'Fazer login'}">${icon('user', 24)}</a>
+  </header>
+  <div class="side-menu-backdrop" data-menu-backdrop hidden></div>
+  <aside class="side-menu" data-side-menu aria-hidden="true" aria-label="Menu">
+    <div class="side-menu-head">
+      <img src="./assets/logo-janu.webp" alt="Janu Turismo" />
+      <button type="button" data-menu-close aria-label="Fechar menu">${icon('close', 23)}</button>
+    </div>
+    <nav class="side-menu-links">
+      <button type="button" data-info-open="depoimentos"><strong>💬 Depoimentos</strong><span>Veja feedbacks de clientes</span>${icon('arrowRight', 19)}</button>
+      <button type="button" data-info-open="politicas"><strong>📋 Políticas</strong><span>Reserva e cancelamento</span>${icon('arrowRight', 19)}</button>
+      <button type="button" data-info-open="ajuda"><strong>🆘 Ajuda</strong><span>Fale com a equipe da Janu</span>${icon('arrowRight', 19)}</button>
+      <button type="button" data-info-open="pagamento"><strong>💳 Formas de pagamento</strong><span>Pix, cartão e condições</span>${icon('arrowRight', 19)}</button>
+    </nav>
+  </aside>
+  <section class="info-screen" data-info-screen hidden aria-modal="true" role="dialog"></section>`;
 }
 
 function bottomNav(active) {
@@ -516,16 +549,6 @@ function trustBand() {
     ${registry}
     <a href="${AGENCY_INFO.instagram}" target="_blank" rel="noopener noreferrer">${AGENCY_INFO.instagramHandle}</a>
     <a href="${waLink('Olá, Janu Turismo! Vim pelo site. Gostaria de falar com a equipe.')}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
-  </section>`;
-}
-
-function testimonialsSection() {
-  return `<section class="testimonials-section" aria-labelledby="testimonials-title">
-    <div class="section-heading testimonials-heading"><div><span class="section-kicker">DEPOIMENTOS</span><h2 id="testimonials-title">Quem viaja com a Janu</h2><p class="testimonials-note">Exemplos temporários — substituir por relatos reais autorizados.</p></div></div>
-    <div class="testimonials-grid">${DEPOIMENTOS.map(item => `<article class="testimonial-card">
-      <span class="testimonial-avatar" aria-hidden="true">J</span>
-      <div><p>${escapeHtml(item.texto)}</p><strong>${escapeHtml(item.nome)}</strong><small>${escapeHtml(item.passeio)}</small></div>
-    </article>`).join('')}</div>
   </section>`;
 }
 
@@ -726,7 +749,6 @@ function renderHome() {
       ${filterChips()}
     </section>
     ${upcomingSection}
-    ${testimonialsSection()}
     ${siteFooter()}
   </main>${bottomNav('home')}`;
   document.title = 'Janu Turismo | Próximas viagens';
@@ -870,11 +892,12 @@ function renderDetail(id) {
       <div class="detail-hero"><img class="detail-cover" src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" /><div class="detail-hero-shade"></div><div class="detail-hero-text"><span>${escapeHtml(trip.kind)}</span><h1>${escapeHtml(trip.title)}</h1><p>${icon('calendar', 19)} ${escapeHtml(trip.date)}${trip.duracao ? ` · ${escapeHtml(trip.duracao)}` : ''}</p></div></div>
       <div class="detail-body">
         ${galleryImages.length > 1 ? `<div class="detail-gallery" aria-label="Galeria de fotos">${galleryImages.map((src, i) => `<button type="button" data-gallery="${i}" aria-label="Ver foto ${i + 1}"><img src="${src}" alt="Foto ${i + 1} de ${escapeHtml(trip.title)}" loading="lazy" decoding="async" /></button>`).join('')}</div>` : ''}
-        <div class="availability-panel">${icon('ticket', 22)}<div><strong data-seats="${trip.id}">${seatsText(trip.id)}</strong><small>A Janu confirma a disponibilidade final pelo WhatsApp.</small></div></div>
+        <div class="availability-panel">${icon('ticket', 22)}<div><strong data-seats="${trip.id}">${seatsText(trip.id)}</strong><small data-reservation-count="${trip.id}">Quantidade de reservas a confirmar</small></div></div>
+        <div class="low-stock-warning" data-low-stock-warning="${trip.id}" hidden></div>
         ${minimumProgressMarkup(trip)}
 
         <section class="booking-config-section" aria-labelledby="booking-config-title">
-          <div class="booking-config-heading"><span class="section-kicker">MONTE SUA RESERVA</span><h2 id="booking-config-title">Escolha sua opção</h2><p>Você não precisa criar conta. Configure abaixo e envie o pedido direto para a Janu.</p></div>
+          <div class="booking-config-heading"><span class="section-kicker">MONTE SUA RESERVA</span><h2 id="booking-config-title">🎟️ Escolha sua opção</h2><p>Preencha seus dados e finalize. A reserva ficará salva na sua conta e no painel da Janu.</p></div>
           <form id="trip-booking-config">
             <label>Opção de preço<select name="fare" required>${fareOptions.map((fare, index) => `<option value="${index}">${escapeHtml(fare.label)} · ${money(fare.amount)}${fare.seats > 1 ? ` · ${fare.seats} pessoas` : ''}</option>`).join('')}</select></label>
             <div class="booking-config-grid">
@@ -882,10 +905,22 @@ function renderDetail(id) {
               <label>Embarque${boardingField}</label>
             </div>
             <p class="people-count" data-people-count></p>
-            ${trip.regraCrianca ? `<div class="child-rule">${icon('user', 20)}<div><strong>Regra para crianças</strong><span>${escapeHtml(trip.regraCrianca)}</span></div></div>` : ''}
-            <div class="booking-total-card"><span>Valor total</span><strong data-config-total>${money(fareOptions[0]?.amount || 0)}</strong><small>O valor considera a opção e a quantidade escolhidas.</small></div>
-            <div class="payment-calculator"><h3>Formas de pagamento</h3><div data-payment-calculator></div></div>
+            ${trip.regraCrianca ? `<div class="child-rule">${icon('user', 20)}<div><strong>👶 Regra para crianças</strong><span>${escapeHtml(trip.regraCrianca)}</span></div></div>` : ''}
+            <div class="booking-rule-note"><strong>📌 Regra da reserva</strong><span>Sua reserva fica <b>Pendente</b> até a Janu confirmar o pagamento. A vaga é separada ao finalizar para evitar lotação duplicada.</span></div>
+            <div class="booking-form-title">👤 Seus dados</div>
+            <div class="booking-config-grid booking-person-grid">
+              <label>Nome<input name="firstName" type="text" minlength="2" maxlength="60" autocomplete="given-name" required /></label>
+              <label>Sobrenome<input name="lastName" type="text" minlength="2" maxlength="80" autocomplete="family-name" required /></label>
+            </div>
+            <div class="booking-config-grid booking-person-grid">
+              <label>CPF<input name="cpf" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required /></label>
+              <label>Telefone<input name="phone" type="tel" inputmode="tel" maxlength="16" placeholder="(88) 99999-9999" required /></label>
+            </div>
+            <div class="booking-total-card"><span>💰 Valor total</span><strong data-config-total>${money(fareOptions[0]?.amount || 0)}</strong><small>O valor considera a opção e a quantidade escolhidas.</small></div>
+            <div class="payment-calculator"><h3>💳 Formas de pagamento</h3><div data-payment-calculator></div><label class="payment-choice">Como pretende pagar?<select name="payment" required><option value="pix">Pix</option><option value="cartao">Cartão</option></select></label></div>
             <label class="policy-check"><input type="checkbox" name="policies" required /><span>Li e aceito as <a href="#/politicas" target="_blank" rel="noopener">políticas de reserva</a> e <a href="#/politicas" target="_blank" rel="noopener">cancelamento</a>.</span></label>
+            <label class="policy-check"><input type="checkbox" name="consent" required /><span>Autorizo o uso dos meus dados para registrar e administrar esta reserva.</span></label>
+            <p class="form-error booking-form-error" hidden></p>
             <a class="waitlist-cta" data-waitlist hidden href="${waLink(`Olá! Quero entrar na lista de espera do passeio ${trip.title} (${trip.date}). Podem me avisar se surgir vaga?`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Entrar na lista de espera</a>
           </form>
         </section>
@@ -895,7 +930,7 @@ function renderDetail(id) {
       </div>
       ${siteFooter({ compact: true })}
     </main>
-    <div class="booking-bar whatsapp-booking-bar"><div class="booking-inner"><div><small>Total</small><strong data-booking-total>${money(fareOptions[0]?.amount || 0)}</strong><span data-booking-people></span></div><button type="submit" form="trip-booking-config" id="whatsapp-reserve" data-trip="${trip.id}">${icon('whatsapp', 24)}<span>Reservar</span></button></div></div>`;
+    <div class="booking-bar whatsapp-booking-bar"><div class="booking-inner"><div><small>Total</small><strong data-booking-total>${money(fareOptions[0]?.amount || 0)}</strong><span data-booking-people></span></div><button type="submit" form="trip-booking-config" id="whatsapp-reserve" data-trip="${trip.id}">${icon('ticket', 23)}<span>Reservar</span></button></div></div>`;
 
   app.querySelector('#share').addEventListener('click', () => shareTrip(trip));
   app.querySelectorAll('[data-gallery]').forEach(button => {
@@ -935,19 +970,57 @@ function renderDetail(id) {
   quantityInput.addEventListener('input', updateBookingSummary);
   updateBookingSummary();
 
-  form.addEventListener('submit', event => {
+  form.addEventListener('submit', async event => {
     event.preventDefault();
     if (tripAvailability(trip.id).soldOut) return;
     if (!form.reportValidity()) return;
 
+    await authReady;
+    if (!currentUser()) {
+      openBookingAuth(() => form.requestSubmit());
+      return;
+    }
+
     const fare = fareOptions[Number(fareSelect.value)] || fareOptions[0];
     const quantity = Math.max(1, Number(quantityInput.value || 1));
     const people = optionPeopleCount(fare, quantity);
-    const total = bookingTotal(fare, quantity);
-    const boarding = String(new FormData(form).get('boarding') || '').trim();
+    const data = new FormData(form);
+    const cpf = String(data.get('cpf') || '');
+    const warning = form.querySelector('.booking-form-error');
 
-    const message = `Olá! Tenho interesse no passeio ${trip.title} (${trip.date}). Opção: ${fare.label} · ${people} pessoa(s) · Embarque: ${boarding}. Valor total: ${money(total)}. Pode confirmar vagas?`;
-    window.open(waLink(message), '_blank', 'noopener,noreferrer');
+    if (!validCpfClient(cpf)) {
+      warning.textContent = 'Confira o CPF informado.';
+      warning.hidden = false;
+      form.elements.cpf.focus();
+      return;
+    }
+
+    const button = app.querySelector('#whatsapp-reserve');
+    button.disabled = true;
+    warning.hidden = true;
+
+    try {
+      const { booking } = await createBooking({
+        tripId: trip.id,
+        firstName: String(data.get('firstName') || '').trim(),
+        lastName: String(data.get('lastName') || '').trim(),
+        cpf,
+        phone: String(data.get('phone') || ''),
+        seats: people,
+        payment: String(data.get('payment') || 'pix'),
+        boarding: String(data.get('boarding') || '').trim(),
+        fareLabel: fare.label,
+        consent: data.get('consent') === 'on' && data.get('policies') === 'on',
+      });
+
+      lastBooking = { booking, token: booking.id };
+      showToast('Reserva salva como pendente.');
+      location.hash = `#/reserva/${booking.id}`;
+    } catch (error) {
+      warning.textContent = error.message;
+      warning.hidden = false;
+      button.disabled = false;
+    }
   });
 
   document.title = `${trip.title} | Janu Turismo`;
@@ -976,6 +1049,101 @@ async function shareTrip(trip) {
   } catch (error) {
     if (error.name !== 'AbortError') showToast('Não foi possível compartilhar a viagem');
   }
+}
+
+function closeSideMenu() {
+  const menu = document.querySelector('[data-side-menu]');
+  const backdrop = document.querySelector('[data-menu-backdrop]');
+  if (menu) {
+    menu.classList.remove('is-open');
+    menu.setAttribute('aria-hidden', 'true');
+  }
+  if (backdrop) backdrop.hidden = true;
+  document.body.classList.remove('menu-open');
+}
+
+function openSideMenu() {
+  const menu = document.querySelector('[data-side-menu]');
+  const backdrop = document.querySelector('[data-menu-backdrop]');
+  if (!menu || !backdrop) return;
+  menu.classList.add('is-open');
+  menu.setAttribute('aria-hidden', 'false');
+  backdrop.hidden = false;
+  document.body.classList.add('menu-open');
+}
+
+function closeInfoScreen() {
+  const screen = document.querySelector('[data-info-screen]');
+  if (!screen) return;
+  screen.hidden = true;
+  screen.innerHTML = '';
+  document.body.classList.remove('info-open');
+}
+
+function openInfoScreen(type) {
+  closeSideMenu();
+  const screen = document.querySelector('[data-info-screen]');
+  if (!screen) return;
+
+  if (type === 'depoimentos') {
+    screen.innerHTML = `<div class="info-screen-shell">
+      <div class="info-screen-head"><div><span>JANU TURISMO</span><h2>💬 Depoimentos</h2></div><button type="button" data-info-close aria-label="Fechar">${icon('close', 25)}</button></div>
+      <div class="info-screen-body testimonial-photo-screen"><img src="./assets/depoimento-feedback.webp" alt="Depoimento real enviado por cliente da Janu Turismo" /></div>
+    </div>`;
+  } else if (type === 'politicas') {
+    screen.innerHTML = `<div class="info-screen-shell">
+      <div class="info-screen-head"><div><span>ANTES DE RESERVAR</span><h2>📋 Políticas</h2></div><button type="button" data-info-close aria-label="Fechar">${icon('close', 25)}</button></div>
+      <div class="info-screen-body info-text-screen">
+        <section><h3>🧾 Reservas e pagamento</h3><p>A reserva é efetivada mediante pagamento parcial no ato. O restante deve ser quitado até 48 horas antes do passeio. Pagamento por Pix ou cartão. Não aceitamos dinheiro em espécie nem pagamento no embarque. As vagas são limitadas.</p></section>
+        <section><h3>↩️ Cancelamento pelo cliente</h3><p>Até 7 dias antes: reembolso de 50% do valor pago, descontados custos operacionais e despesas não recuperáveis. Até 48 horas antes: multa de 20% do valor total e nova data conforme disponibilidade. Por doença, com aviso de 48 horas e atestado: nova data ou reembolso conforme análise. Com 24 horas de antecedência ou em caso de não comparecimento: não reembolsável.</p><div class="info-warning"><strong>[CONFIRMAR]</strong> As regras de 7 dias e 48 horas se sobrepõem e ainda precisam ter o intervalo exato definido pela Janu.</div></section>
+        <section><h3>🚌 Cancelamento pela Janu</h3><p>Em caso de adiamento ou de o mínimo de reservas não ser atingido: remarcação, crédito válido por 6 meses ou reembolso integral, em até 30 dias úteis. Despesas antecipadas comprovadas podem ser descontadas. No cartão, considera-se o valor efetivamente recebido, sem as taxas da operadora.</p></section>
+      </div>
+    </div>`;
+  } else if (type === 'pagamento') {
+    screen.innerHTML = `<div class="info-screen-shell">
+      <div class="info-screen-head"><div><span>RESERVA</span><h2>💳 Formas de pagamento</h2></div><button type="button" data-info-close aria-label="Fechar">${icon('close', 25)}</button></div>
+      <div class="info-screen-body info-text-screen">
+        <section class="payment-info-card"><h3>💠 Pix</h3><p>As condições e o número de parcelas são mostrados na página de cada viagem.</p></section>
+        <section class="payment-info-card"><h3>💳 Cartão</h3><p>Parcelamento e eventual acréscimo variam conforme o passeio e aparecem antes da reserva.</p></section>
+        <section><p>Não aceitamos dinheiro em espécie nem pagamento no momento do embarque.</p></section>
+      </div>
+    </div>`;
+  } else {
+    screen.innerHTML = `<div class="info-screen-shell">
+      <div class="info-screen-head"><div><span>ATENDIMENTO</span><h2>🆘 Ajuda</h2></div><button type="button" data-info-close aria-label="Fechar">${icon('close', 25)}</button></div>
+      <div class="info-screen-body help-screen"><p>Precisa de ajuda com viagem, reserva, pagamento ou embarque?</p><a class="contact-button full-button" href="${waLink('Olá, Janu Turismo! Preciso de ajuda com uma viagem ou reserva.')}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 23)} Falar com a Janu</a></div>
+    </div>`;
+  }
+
+  screen.hidden = false;
+  document.body.classList.add('info-open');
+  screen.querySelector('[data-info-close]')?.addEventListener('click', closeInfoScreen);
+}
+
+function bindHeaderMenu() {
+  const toggle = document.querySelector('[data-menu-toggle]');
+  const close = document.querySelector('[data-menu-close]');
+  const backdrop = document.querySelector('[data-menu-backdrop]');
+  toggle?.addEventListener('click', openSideMenu);
+  close?.addEventListener('click', closeSideMenu);
+  backdrop?.addEventListener('click', closeSideMenu);
+  document.querySelectorAll('[data-info-open]').forEach(button => {
+    button.addEventListener('click', () => openInfoScreen(button.dataset.infoOpen));
+  });
+}
+
+function openBookingAuth(onSuccess) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'booking-auth-dialog';
+  dialog.innerHTML = `<button class="auth-close" type="button" aria-label="Fechar">${icon('close', 23)}</button>${authPanel('Entre para salvar sua reserva')}`;
+  document.body.appendChild(dialog);
+  dialog.querySelector('.auth-close').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('close', () => dialog.remove(), { once: true });
+  bindAuth(dialog, () => {
+    dialog.close();
+    onSuccess();
+  });
+  dialog.showModal();
 }
 
 function showToast(message) {
@@ -1065,7 +1233,7 @@ function renderContact() {
 }
 
 function paymentLabel(value) { return value === 'pix' ? 'Pix' : value === 'cartao' ? 'Cartão' : 'A combinar'; }
-function statusLabel(value) { return value === 'confirmed' ? 'Confirmada pela Janu' : value === 'cancelled' ? 'Cancelada' : 'Aguardando confirmação da Janu'; }
+function statusLabel(value) { return value === 'confirmed' ? 'Pago · Reservado' : value === 'cancelled' ? 'Cancelada' : 'Pagamento pendente'; }
 
 function bookingContent(booking, token, demo = false) {
   const trip = TRIPS.find(item => item.id === booking.tripId);
@@ -1075,7 +1243,7 @@ function bookingContent(booking, token, demo = false) {
     <span class="confirmation-icon">${icon(demo ? 'user' : 'check', 30)}</span>
     <span class="section-kicker">${demo ? 'EXEMPLO DE RESERVA' : 'RESERVA REGISTRADA'}</span>
     <h1>${demo ? 'Veja como ficará sua reserva' : 'Sua viagem começa aqui!'}</h1>
-    <p>${demo ? 'Esta é uma visualização. Nenhuma vaga foi reservada e seus dados não foram enviados.' : 'Seus lugares foram separados. A Janu Turismo confirmará os detalhes e o pagamento com você.'}</p>
+    <p>${demo ? 'Esta é uma visualização. Nenhuma vaga foi reservada e seus dados não foram enviados.' : booking.status === 'confirmed' ? 'Pagamento confirmado. Sua reserva está garantida.' : 'Reserva registrada e vaga separada. Envie o comprovante pelo WhatsApp e aguarde a Janu marcar o pagamento como confirmado.'}</p>
     <div class="booking-reference"><span>Número da reserva</span><strong>${escapeHtml(booking.id)}</strong></div>
     <div class="booking-summary">
       <div><span>Destino</span><strong>${escapeHtml(trip?.title || 'Viagem')}</strong></div>
@@ -1089,7 +1257,7 @@ function bookingContent(booking, token, demo = false) {
       <div><span>Embarque</span><strong>${escapeHtml(booking.boarding || 'A combinar')}</strong></div>
     </div>
     <p class="booking-status">${icon('calendar', 18)} ${demo ? 'Demonstração · vagas fictícias' : statusLabel(booking.status)}</p>
-    ${!demo ? `<a class="contact-button full-button" href="${waLink(booking.status === 'cancelled' ? `Olá, Janu Turismo! Tenho uma dúvida sobre a reserva ${booking.id}.` : message)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 24)} ${booking.status === 'cancelled' ? 'Falar sobre esta reserva' : 'Enviar reserva para a Janu'} ${icon('arrowUpRight', 18)}</a><button class="copy-link" id="copy-booking" type="button">${icon('copy', 18)} Copiar link da reserva</button>` : '<p class="preview-explain">Para ativar reservas reais, a agência deve cadastrar as vagas e conectar o Firebase.</p>'}
+    ${!demo ? `<a class="contact-button full-button" href="${waLink(booking.status === 'cancelled' ? `Olá, Janu Turismo! Tenho uma dúvida sobre a reserva ${booking.id}.` : booking.status === 'confirmed' ? `Olá, Janu Turismo! Minha reserva ${booking.id} já consta como paga e reservada. Gostaria de confirmar os detalhes finais.` : `Olá, Janu Turismo! Finalizei a reserva ${booking.id} para ${trip?.title || 'a viagem'} (${trip?.date || 'data a confirmar'}). Pagamento escolhido: ${paymentLabel(booking.payment)}. Vou enviar o comprovante para confirmação do pagamento.`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 24)} ${booking.status === 'cancelled' ? 'Falar sobre esta reserva' : booking.status === 'confirmed' ? 'Falar com a Janu' : 'Confirmar pagamento pelo WhatsApp'} ${icon('arrowUpRight', 18)}</a><button class="copy-link" id="copy-booking" type="button">${icon('copy', 18)} Copiar link da reserva</button>` : '<p class="preview-explain">Para ativar reservas reais, a agência deve cadastrar as vagas e conectar o Firebase.</p>'}
     <a class="text-link" href="#/reservas">Ver minhas reservas ${icon('arrowRight', 18)}</a>
   </div>`;
 }
@@ -1370,10 +1538,10 @@ async function loadAdmin() {
   const { trips, bookings } = await adminFetch();
   const content = app.querySelector('#admin-content');
   if (!content) return;
-  content.innerHTML = `<div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Defina a capacidade real antes de liberar reservas. Viagens desmarcadas ficam sem novos agendamentos.</p><div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => { const catalogTrip = TRIPS.find(item => item.id === trip.id); const ended = catalogTrip && isTripPast(catalogTrip); return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}"><div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div><span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservadas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`; }).join('')}</div><div id="admin-editor-slot"></div>
+  content.innerHTML = `<div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Defina a capacidade real antes de liberar reservas. Viagens desmarcadas ficam sem novos agendamentos.</p><div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => { const catalogTrip = TRIPS.find(item => item.id === trip.id); const ended = catalogTrip && isTripPast(catalogTrip); return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}"><div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div><span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}${!trip.demo && trip.available > 0 && trip.available <= 5 ? ` · ⚠️ Últimas ${trip.available} vagas` : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`; }).join('')}</div><div id="admin-editor-slot"></div>
     <section class="manual-section"><h2>Adicionar reserva recebida pelo WhatsApp</h2><p>O passageiro ocupa as vagas imediatamente. Informe o e-mail usado no site para mostrar a reserva na conta dele.</p><form id="manual-booking" class="admin-editor"><label>Viagem<select name="tripId" required>${TRIPS.map(trip => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.title)} · ${escapeHtml(trip.date)}</option>`).join('')}</select></label><div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div><div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div><div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div><label>E-mail do cliente no site (opcional)<input name="email" type="email" placeholder="Para aparecer em Minhas reservas" /></label><button type="submit">Salvar passageiro e descontar vagas</button><p id="manual-error" class="form-error" hidden></p></form></section>
     <section class="passengers-admin"><div class="admin-section-heading"><div><h2>Passageiros por viagem</h2><p>Lista agrupada por embarque. Cópia e CSV não incluem o CPF completo.</p></div></div><div class="passengers-admin-list">${passengerGroupsMarkup(bookings)}</div></section>
-    <h2>Últimas reservas</h2><div class="admin-bookings">${bookings.length ? bookings.map(booking => `<article><strong>${escapeHtml(booking.id)} · ${escapeHtml(tripName(booking.tripId))}</strong><p>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)} · CPF final ${escapeHtml(booking.cpfLast4)} · ${escapeHtml(booking.phone)}</p><p>${booking.seats} passageiros · ${booking.source === 'whatsapp' ? 'WhatsApp · ' : ''}${paymentLabel(booking.payment)} · ${escapeHtml(statusLabel(booking.status))}</p>${booking.status === 'pending' ? `<button data-action="confirmed" data-id="${booking.id}">Confirmar</button>` : ''}${booking.status !== 'cancelled' ? `<button data-action="cancelled" data-id="${booking.id}">Cancelar e liberar vagas</button><a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">Cobrar saldo</a>` : ''}</article>`).join('') : '<p>Nenhuma reserva registrada.</p>'}</div>`;
+    <h2>Últimas reservas</h2><div class="admin-bookings">${bookings.length ? bookings.map(booking => `<article><strong>${escapeHtml(booking.id)} · ${escapeHtml(tripName(booking.tripId))}</strong><p>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)} · CPF final ${escapeHtml(booking.cpfLast4)} · ${escapeHtml(booking.phone)}</p><p>${booking.seats} passageiros · ${booking.source === 'whatsapp' ? 'WhatsApp · ' : ''}${paymentLabel(booking.payment)} · ${escapeHtml(statusLabel(booking.status))}</p>${booking.status === 'pending' ? `<button class="admin-paid-button" data-action="confirmed" data-id="${booking.id}">Marcar como pago</button>` : ''}${booking.status !== 'cancelled' ? `<button data-action="cancelled" data-id="${booking.id}">Cancelar e liberar vagas</button><a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">Cobrar saldo</a>` : ''}</article>`).join('') : '<p>Nenhuma reserva registrada.</p>'}</div>`;
   content.querySelectorAll('[data-copy-passengers]').forEach(button => button.addEventListener('click', async () => {
     const csv = passengerCsv(button.dataset.copyPassengers, bookings);
     try {
@@ -1421,6 +1589,7 @@ function render() {
   else if (route[0] === 'contato') renderContact();
   else if (route[0] === 'politicas') renderPolicies();
   else renderHome();
+  bindHeaderMenu();
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
