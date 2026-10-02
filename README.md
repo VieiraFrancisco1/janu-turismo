@@ -1,29 +1,51 @@
-# Janu Turismo — versão 11
+# Janu Turismo — versão 12
 
-Nesta versão, a página inicial ganhou uma área dinâmica de **Eventos especiais**. A agência pode marcar uma viagem como especial no painel e definir até quando o destaque ficará ativo. O destaque usa o mesmo tamanho de card das demais viagens e desaparece automaticamente após a data definida. O bloco “Pedir ajuda no WhatsApp” foi removido da tela inicial. O acesso à conta continua usando abas separadas: **Entrar** e **Criar conta**.
+Site da Janu Turismo em JavaScript puro, com rotas por hash, Firebase Authentication, Cloud Firestore e build com esbuild. A publicação oficial é feita pelo Firebase Hosting.
 
-Projeto Firebase Hosting + Authentication (e-mail/senha) + Cloud Firestore. O endereço público é um site adicional dentro do projeto `janu-turismo-e747f`, por exemplo `janu-turismo-ce.web.app`. Isso mantém contas e reservas anteriores no mesmo banco.
+## Estrutura
 
-## Atualizar uma instalação existente
+- `app.js`: interface, rotas, viagens, reservas e painel `#/gestao`.
+- `data.js`: integração com Firebase Auth e Firestore.
+- `catalogo.js`: catálogo-base e compatibilidade dos dados de viagem.
+- `assets/`: logo e fotos otimizadas.
+- `firestore.rules.template`: modelo das regras de segurança. Não altere a estrutura permitida de `trip_inventory`.
 
-Baixe o ZIP completo da v10 e execute `aplicar-janu-v10.ps1` na pasta Downloads. O script copia somente `app.js` e `styles.css` para a instalação v9, preserva a configuração e as regras do Firebase, monta o site e publica no projeto existente `janu-turismo` da Vercel.
+## Build e publicação
 
-## Contas e reservas
+Instale as dependências e gere o site:
 
-- Para reservar, o cliente cria conta ou entra com e-mail e senha. O nome aparece no perfil. A aba Reservas consulta apenas as reservas associadas à conta.
-- O botão de reservar fica inativo até a Janu configurar e liberar a capacidade real daquela viagem. Não há reserva fictícia.
-- Ao concluir, as vagas diminuem numa transação do Firestore. O cliente vê o comprovante e pode enviar os dados pelo WhatsApp. Escolher Pix/cartão **não processa pagamentos**; a Janu confirma e combina a cobrança.
-- Em `#/gestao`, a dona cadastra ou edita viagens, adiciona até quatro fotos, define preços/modalidades, locais, inclusões, pagamento, horários e avisos; também configura vagas, confirma/cancela e adiciona reservas feitas pelo WhatsApp.
-- A reserva manual desconta vagas na mesma transação. Se a Janu preencher o e-mail de uma conta já cadastrada no site, a reserva aparece também em **Minhas reservas** desse cliente; caso contrário, fica no painel da agência sem vínculo de login. Para contas antigas, peça ao cliente que entre uma vez para registrar o perfil antes da reserva manual.
+```powershell
+npm install
+npm run build
+```
 
-## Viagens
+Para publicar no Firebase Hosting:
 
-Os três passeios antigos permanecem e podem ser editados. Os campos opcionais são exibidos apenas quando informados. Os preços são opções com rótulo e quantidade de vagas (individual, casal, criança, quarto, cidade de embarque etc.). **Confira datas, preço, descrição e condições com a agência antes de liberar reservas reais**: os anúncios enviados servem de referência e alguns são de passeios passados.
+```powershell
+npx firebase login
+npx firebase deploy --only hosting
+```
 
-As fotos escolhidas no painel são reduzidas pelo navegador e guardadas no documento da viagem no Firestore. Há limite de quatro fotos pequenas por passeio. Esta solução funciona no plano Spark, sem Firebase Storage; caso o catálogo cresça muito, migre as fotos para um serviço próprio de arquivos.
+O build é gerado em `dist/`. A pasta `assets/` é copiada integralmente para o build.
 
-## Firebase
+## Firebase Authentication
 
-Ative Authentication → E-mail/senha, crie o banco Firestore `(default)` em modo Production e use as regras geradas pelo script com o UID da conta da agência. As regras preservam a leitura das reservas do próprio cliente e dão acesso à gestão apenas à conta da agência. **Não use regras de teste abertas**. O plano Spark possui limites de uso, sem garantia de capacidade ilimitada.
+Ative **E-mail/senha** em Firebase Console → Authentication → Sign-in method.
 
-O login foi implementado no código, mas precisa ser confirmado no seu projeto real após a publicação: crie uma conta de teste, ative uma viagem com poucas vagas e faça uma reserva de teste, conferindo no painel da Janu e em Minhas reservas. Cancele o teste depois para devolver as vagas.
+O site também possui **Entrar com Google**. Para usar esse botão, ative o provedor **Google** no mesmo local do Firebase Console.
+
+Há recuperação de senha por e-mail com `sendPasswordResetEmail`.
+
+## Firestore
+
+O catálogo usa `trip_catalog` e aceita os campos adicionais de viagem. O inventário usa `trip_inventory` somente para capacidade e controle de vagas conforme as regras existentes.
+
+Não use regras abertas de teste e não altere `firestore.rules.template` sem revisar o impacto nas reservas e no painel.
+
+## Viagens e reservas
+
+A Home filtra viagens passadas pelas datas reais, permite escolher a cidade de embarque e mostra os próximos passeios em carrossel. A página da viagem calcula o total, mostra condições de Pix/cartão e abre o WhatsApp com a mensagem pronta.
+
+O painel `#/gestao` permite editar viagens, vagas e reservas, além de listar passageiros agrupados por embarque, copiar a lista, baixar CSV e abrir uma cobrança de saldo pelo WhatsApp.
+
+Dados provisórios ou ainda não validados devem permanecer marcados como **[CONFIRMAR]**.
