@@ -30,6 +30,8 @@ let disposeDetailPhotos = () => {};
 let disposeBookings = () => {};
 let disposeAdminExpiry = () => {};
 let disposeTripExpiry = () => {};
+let adminActiveTab = 'trips';
+let adminOpenTrip = '';
 
 const paths = {
   arrowLeft: '<path d="m15 18-6-6 6-6"/>',
@@ -1257,6 +1259,7 @@ function renderContact() {
 
 function paymentLabel(value) { return value === 'pix' ? 'Pix' : value === 'cartao' ? 'Cartão' : 'A combinar'; }
 function statusLabel(value) { return value === 'confirmed' ? 'Confirmada' : value === 'cancelled' ? 'Cancelada' : 'Aguardando confirmação'; }
+function paymentStatusLabel(value) { return value === 'confirmed' ? 'Pago' : value === 'cancelled' ? 'Cancelado' : 'Pendente'; }
 
 function bookingContent(booking, token, demo = false) {
   const trip = TRIPS.find(item => item.id === booking.tripId);
@@ -1288,8 +1291,14 @@ function bookingContent(booking, token, demo = false) {
       <div><span>Opção escolhida</span><strong>${escapeHtml(booking.fareLabel || 'A combinar')}${booking.quantity ? ` · ${booking.quantity} ${booking.quantity === 1 ? 'unidade' : 'unidades'}` : ''}</strong></div>
       <div><span>Embarque</span><strong>${escapeHtml(booking.boarding || 'A combinar')}</strong></div>
     </div>
-    ${total ? `<div class="reservation-total"><span>Valor do pacote<small>${paymentLabel(booking.payment)} · ${confirmed ? 'pagamento confirmado' : cancelled ? 'reserva cancelada' : 'pagamento a combinar'}${booking.payment === 'cartao' ? ' · acréscimos a confirmar' : ''}</small></span><strong>${total}</strong></div>` : ''}
-    ${!demo ? `<a class="contact-button full-button" href="${waLink(message)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 23)} ${cancelled || confirmed ? 'Falar sobre a reserva' : 'Continuar pelo WhatsApp'} ${icon('arrowUpRight', 18)}</a><button class="copy-link" id="copy-booking" type="button">${icon('copy', 18)} Copiar link da reserva</button>` : ''}
+    ${total ? `<section class="reservation-payment-card booking-payment-${escapeHtml(booking.status)}">
+      <div class="reservation-payment-head"><span>Pagamento</span><strong class="payment-state-badge ${confirmed ? 'is-paid' : cancelled ? 'is-cancelled' : 'is-pending'}">${paymentStatusLabel(booking.status)}</strong></div>
+      <div class="reservation-payment-row"><span>Valor do pacote</span><strong>${total}</strong></div>
+      <div class="reservation-payment-row"><span>Forma de pagamento</span><strong>${paymentLabel(booking.payment)}</strong></div>
+      ${booking.payment === 'cartao' ? '<small class="reservation-payment-note">Eventuais acréscimos do cartão são confirmados pela Janu.</small>' : ''}
+      <p>${confirmed ? 'Pagamento confirmado pela Janu Turismo. Sua reserva está paga.' : cancelled ? 'Esta reserva foi cancelada. Entre em contato com a Janu se precisar de ajuda.' : 'Para seguir com seu pagamento, entre em contato com a Janu pelo WhatsApp.'}</p>
+    </section>` : ''}
+    ${!demo ? `<a class="contact-button full-button payment-whatsapp-button" href="${waLink(message)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 23)} ${cancelled || confirmed ? 'Falar com a Janu' : 'Continuar pagamento no WhatsApp'} ${icon('arrowUpRight', 18)}</a><button class="copy-link" id="copy-booking" type="button">${icon('copy', 18)} Copiar link da reserva</button>` : ''}
     <a class="text-link" href="#/reservas">Ver minhas reservas ${icon('arrowRight', 18)}</a>
   </div>`;
 }
@@ -1352,7 +1361,7 @@ async function renderMyReservations() {
   list.closest('main').querySelector('.bookings-intro > p').textContent = 'Suas reservas e confirmações, sempre à mão.';
   const showBookings = bookings => {
     if (!resultsHolder.isConnected) return;
-    resultsHolder.innerHTML = bookings.length ? bookings.map(booking => `<a class="my-booking-card booking-state-${escapeHtml(booking.status)}" href="#/reserva/${booking.id}"><img src="${TRIPS.find(trip => trip.id === booking.tripId)?.image || './assets/logo-janu.webp'}" alt="" /><span><small>${escapeHtml(booking.id)} · ${escapeHtml(statusLabel(booking.status))}</small><strong>${escapeHtml(booking.tripTitle || tripName(booking.tripId))}</strong><em>${escapeHtml(booking.tripDate || '')} · ${booking.seats} ${booking.seats === 1 ? 'passageiro' : 'passageiros'}</em>${Number.isInteger(booking.totalCents) ? `<b class="my-booking-total">${money(booking.totalCents / 100)}</b>` : ''}</span>${icon('arrowRight', 20)}</a>`).join('') : `<div class="empty-reservations">${icon('ticket', 38)}<h2>Nenhuma reserva por aqui</h2><p>Escolha um destino e faça sua primeira reserva.</p><a href="#/viagens">Explorar viagens ${icon('arrowRight', 18)}</a></div>`;
+    resultsHolder.innerHTML = bookings.length ? bookings.map(booking => `<a class="my-booking-card booking-state-${escapeHtml(booking.status)}" href="#/reserva/${booking.id}"><img src="${TRIPS.find(trip => trip.id === booking.tripId)?.image || './assets/logo-janu.webp'}" alt="" /><span><small>${escapeHtml(booking.id)} · Pagamento ${escapeHtml(paymentStatusLabel(booking.status).toLowerCase())}</small><strong>${escapeHtml(booking.tripTitle || tripName(booking.tripId))}</strong><em>${escapeHtml(booking.tripDate || '')} · ${booking.seats} ${booking.seats === 1 ? 'passageiro' : 'passageiros'}</em>${Number.isInteger(booking.totalCents) ? `<b class="my-booking-total">${money(booking.totalCents / 100)}</b>` : ''}</span>${icon('arrowRight', 20)}</a>`).join('') : `<div class="empty-reservations">${icon('ticket', 38)}<h2>Nenhuma reserva por aqui</h2><p>Escolha um destino e faça sua primeira reserva.</p><a href="#/viagens">Explorar viagens ${icon('arrowRight', 18)}</a></div>`;
   };
   const showError = error => {
     if (!resultsHolder.isConnected) return;
@@ -1570,6 +1579,60 @@ function passengerGroupsMarkup(bookings) {
   }).join('');
 }
 
+function adminReservationsByTripMarkup(trips, bookings) {
+  const sortedTrips = [...trips].sort((a, b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {}));
+  if (!sortedTrips.length) return '<p class="empty-state">Nenhuma viagem disponível para gerenciar reservas.</p>';
+  const validOpen = adminOpenTrip && sortedTrips.some(trip => trip.id === adminOpenTrip);
+  const openTripId = validOpen ? adminOpenTrip : sortedTrips[0].id;
+  adminOpenTrip = openTripId;
+
+  return sortedTrips.map(trip => {
+    const catalogTrip = TRIPS.find(item => item.id === trip.id);
+    const tripBookings = bookings.filter(booking => booking.tripId === trip.id);
+    const activeBookings = tripBookings.filter(booking => booking.status !== 'cancelled');
+    const paidCount = tripBookings.filter(booking => booking.status === 'confirmed').length;
+    const pendingCount = tripBookings.filter(booking => booking.status === 'pending').length;
+    const isOpen = trip.id === openTripId;
+    return `<section class="admin-reservation-trip ${isOpen ? 'is-open' : ''}">
+      <button class="admin-reservation-trip-toggle" type="button" data-admin-trip-open="${escapeHtml(trip.id)}" aria-expanded="${isOpen}">
+        <span><small>${escapeHtml(catalogTrip?.date || 'Data a confirmar')}</small><strong>${escapeHtml(tripName(trip.id))}</strong></span>
+        <span class="admin-trip-count">${tripBookings.length} ${tripBookings.length === 1 ? 'reserva' : 'reservas'} ${icon('arrowRight', 18)}</span>
+      </button>
+      <div class="admin-reservation-trip-body" data-admin-trip-body="${escapeHtml(trip.id)}" ${isOpen ? '' : 'hidden'}>
+        <div class="admin-seat-metrics">
+          <div><span>Total de vagas</span><strong>${trip.demo ? '—' : trip.capacity}</strong></div>
+          <div><span>Preenchidas</span><strong>${trip.demo ? activeBookings.reduce((sum, booking) => sum + Number(booking.seats || 0), 0) : trip.reserved}</strong></div>
+          <div><span>Faltam</span><strong>${trip.demo ? '—' : trip.available}</strong></div>
+        </div>
+        <div class="admin-payment-summary">
+          <span class="admin-payment-summary-paid">${paidCount} ${paidCount === 1 ? 'pago' : 'pagos'}</span>
+          <span class="admin-payment-summary-pending">${pendingCount} ${pendingCount === 1 ? 'pendente' : 'pendentes'}</span>
+        </div>
+        <div class="admin-trip-bookings">
+          ${tripBookings.length ? tripBookings.map(booking => {
+            const paid = booking.status === 'confirmed';
+            const cancelled = booking.status === 'cancelled';
+            return `<article class="admin-reservation-person booking-state-${escapeHtml(booking.status)}">
+              <div class="admin-reservation-person-head">
+                <div><strong>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)}</strong><small>${escapeHtml(booking.id)}</small></div>
+                <span class="admin-payment-badge ${paid ? 'is-paid' : cancelled ? 'is-cancelled' : 'is-pending'}">${paymentStatusLabel(booking.status)}</span>
+              </div>
+              <p>${booking.seats} ${booking.seats === 1 ? 'passageiro' : 'passageiros'} · ${paymentLabel(booking.payment)}${Number.isInteger(booking.totalCents) ? ` · ${money(booking.totalCents / 100)}` : ''}</p>
+              <p>${escapeHtml(booking.phone)} · Embarque: ${escapeHtml(booking.boarding || 'A combinar')}</p>
+              <div class="admin-reservation-actions">
+                ${booking.status === 'pending' ? `<button class="admin-paid-button" type="button" data-action="confirmed" data-id="${escapeHtml(booking.id)}">Marcar como pago</button>` : ''}
+                ${booking.status === 'confirmed' ? `<button class="admin-pending-button" type="button" data-action="pending" data-id="${escapeHtml(booking.id)}">Marcar como pendente</button>` : ''}
+                ${booking.status !== 'cancelled' ? `<a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
+                <button class="admin-delete-button" type="button" data-delete-booking="${escapeHtml(booking.id)}">Excluir</button>
+              </div>
+            </article>`;
+          }).join('') : '<p class="empty-state compact-empty">Ainda não há reservas nessa viagem.</p>'}
+        </div>
+      </div>
+    </section>`;
+  }).join('');
+}
+
 function renderAdmin() {
   app.innerHTML = `<main class="wrap admin-page"><a href="#/">${icon('arrowLeft', 20)} Voltar ao site</a><h1>Gestão de reservas</h1><p>Área da Janu Turismo</p><div id="admin-login">${authPanel('Entre com a conta da agência')}</div><div id="admin-content"></div></main>`;
   bindAuth(app.querySelector('#admin-login'), async () => {
@@ -1592,10 +1655,24 @@ async function loadAdmin() {
     const next = bookings.filter(booking => { const deadline = reservationDeadline(booking, TRIPS); return deadline === null || Date.now() < deadline; }).map(booking => booking.id).join('|');
     if (next !== visibleBookings && content.isConnected) { visibleBookings = next; loadAdmin().catch(() => showToast('Não foi possível atualizar as reservas.')); }
   });
-  content.innerHTML = `<div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="refresh-admin">Atualizar</button><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Pedidos sem vagas configuradas aguardam confirmação. Defina a capacidade real para separar lugares e confirmar pagamentos. Ao pausar uma viagem, novos pedidos ficam bloqueados.</p><div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => { const catalogTrip = TRIPS.find(item => item.id === trip.id); const ended = catalogTrip && isTripPast(catalogTrip); return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}"><div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div><span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}${!trip.demo && trip.available > 0 && trip.available <= 5 ? ` · ⚠️ Últimas ${trip.available} vagas` : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`; }).join('')}</div><div id="admin-editor-slot"></div>
-    <section class="manual-section"><h2>Adicionar reserva recebida pelo WhatsApp</h2><p>O passageiro ocupa as vagas imediatamente. Informe o nome de acesso ou e-mail usado no site para vincular à conta dele.</p><form id="manual-booking" class="admin-editor"><label>Viagem<select name="tripId" required>${upcomingTrips().map(trip => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.title)} · ${escapeHtml(trip.date)}</option>`).join('')}</select></label><div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div><div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div><div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div><label>Nome de acesso ou e-mail do cliente (opcional)<input name="identifier" type="text" placeholder="Para aparecer em Minhas reservas" /></label><button type="submit">Salvar passageiro e descontar vagas</button><p id="manual-error" class="form-error" hidden></p></form></section>
+  content.innerHTML = `<div class="admin-management-tabs" role="tablist" aria-label="Gestão"><button type="button" data-admin-tab="trips" class="${adminActiveTab === 'trips' ? 'is-active' : ''}">Viagens e vagas</button><button type="button" data-admin-tab="bookings" class="${adminActiveTab === 'bookings' ? 'is-active' : ''}">Reservas</button></div><div class="admin-tab-panel" data-admin-panel="trips" ${adminActiveTab === 'trips' ? '' : 'hidden'}><div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="refresh-admin">Atualizar</button><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Pedidos sem vagas configuradas aguardam confirmação. Defina a capacidade real para separar lugares e confirmar pagamentos. Ao pausar uma viagem, novos pedidos ficam bloqueados.</p><div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => { const catalogTrip = TRIPS.find(item => item.id === trip.id); const ended = catalogTrip && isTripPast(catalogTrip); return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}"><div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div><span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}${!trip.demo && trip.available > 0 && trip.available <= 5 ? ` · ⚠️ Últimas ${trip.available} vagas` : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`; }).join('')}</div><div id="admin-editor-slot"></div>
+    <section class="manual-section"><h2>Adicionar reserva recebida pelo WhatsApp</h2><p>O passageiro ocupa as vagas imediatamente. Informe o nome de acesso ou e-mail usado no site para vincular à conta dele.</p><form id="manual-booking" class="admin-editor"><label>Viagem<select name="tripId" required>${upcomingTrips().map(trip => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.title)} · ${escapeHtml(trip.date)}</option>`).join('')}</select></label><div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div><div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div><div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div><label>Nome de acesso ou e-mail do cliente (opcional)<input name="identifier" type="text" placeholder="Para aparecer em Minhas reservas" /></label><button type="submit">Salvar passageiro e descontar vagas</button><p id="manual-error" class="form-error" hidden></p></form></section></div><div class="admin-tab-panel" data-admin-panel="bookings" ${adminActiveTab === 'bookings' ? '' : 'hidden'}><section class="admin-reservations-overview"><h2>Reservas por viagem</h2><p>Abra uma viagem para ver clientes, pagamentos e vagas.</p><div class="admin-reservation-trips">${adminReservationsByTripMarkup(trips, bookings)}</div></section>
     <section class="passengers-admin"><div class="admin-section-heading"><div><h2>Passageiros por viagem</h2><p>Lista agrupada por embarque. Cópia e CSV não incluem o CPF completo.</p></div></div><div class="passengers-admin-list">${passengerGroupsMarkup(bookings)}</div></section>
-    <h2>Últimas reservas</h2><div class="admin-bookings">${bookings.length ? bookings.map(booking => `<article><strong>${escapeHtml(booking.id)} · ${escapeHtml(booking.tripTitle || tripName(booking.tripId))}</strong><p>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)} · CPF final ${escapeHtml(booking.cpfLast4)} · ${escapeHtml(booking.phone)}</p><p>${booking.seats} passageiros · ${booking.source === 'whatsapp' ? 'WhatsApp · ' : ''}${paymentLabel(booking.payment)} · ${escapeHtml(statusLabel(booking.status))}${Number.isInteger(booking.totalCents) ? ` · ${money(booking.totalCents / 100)} · ${escapeHtml(booking.fareLabel)} × ${booking.quantity}` : ''}</p>${booking.status === 'pending' ? `<button class="admin-paid-button" data-action="confirmed" data-id="${booking.id}">Confirmar pagamento e reserva</button>` : ''}${booking.status !== 'cancelled' ? `<button data-action="cancelled" data-id="${booking.id}">Cancelar reserva</button><a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">Falar com o cliente</a>` : ''}<button class="admin-delete-button" data-delete-booking="${booking.id}">Apagar reserva</button></article>`).join('') : '<p>Nenhuma reserva registrada.</p>'}</div>`;
+    <h2>Últimas reservas</h2><div class="admin-bookings">${bookings.length ? bookings.map(booking => `<article><strong>${escapeHtml(booking.id)} · ${escapeHtml(booking.tripTitle || tripName(booking.tripId))}</strong><p>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)} · CPF final ${escapeHtml(booking.cpfLast4)} · ${escapeHtml(booking.phone)}</p><p>${booking.seats} passageiros · ${booking.source === 'whatsapp' ? 'WhatsApp · ' : ''}${paymentLabel(booking.payment)} · ${escapeHtml(statusLabel(booking.status))}${Number.isInteger(booking.totalCents) ? ` · ${money(booking.totalCents / 100)} · ${escapeHtml(booking.fareLabel)} × ${booking.quantity}` : ''}</p>${booking.status === 'pending' ? `<button class="admin-paid-button" data-action="confirmed" data-id="${booking.id}">Confirmar pagamento e reserva</button>` : ''}${booking.status !== 'cancelled' ? `<button data-action="cancelled" data-id="${booking.id}">Cancelar reserva</button><a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">Falar com o cliente</a>` : ''}<button class="admin-delete-button" data-delete-booking="${booking.id}">Apagar reserva</button></article>`).join('') : '<p>Nenhuma reserva registrada.</p>'}</div></div>`;
+  content.querySelectorAll('[data-admin-tab]').forEach(button => button.addEventListener('click', () => {
+    adminActiveTab = button.dataset.adminTab;
+    content.querySelectorAll('[data-admin-tab]').forEach(item => item.classList.toggle('is-active', item === button));
+    content.querySelectorAll('[data-admin-panel]').forEach(panel => { panel.hidden = panel.dataset.adminPanel !== adminActiveTab; });
+  }));
+  content.querySelectorAll('[data-admin-trip-open]').forEach(button => button.addEventListener('click', () => {
+    adminOpenTrip = button.dataset.adminTripOpen;
+    content.querySelectorAll('[data-admin-trip-open]').forEach(item => {
+      const open = item.dataset.adminTripOpen === adminOpenTrip;
+      item.setAttribute('aria-expanded', String(open));
+      item.closest('.admin-reservation-trip')?.classList.toggle('is-open', open);
+    });
+    content.querySelectorAll('[data-admin-trip-body]').forEach(body => { body.hidden = body.dataset.adminTripBody !== adminOpenTrip; });
+  }));
   content.querySelectorAll('[data-copy-passengers]').forEach(button => button.addEventListener('click', async () => {
     const csv = passengerCsv(button.dataset.copyPassengers, bookings);
     try {
@@ -1632,10 +1709,18 @@ async function loadAdmin() {
     catch (error) { showToast(error.message); button.disabled = false; }
   }));
   content.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', async () => {
-    if (!confirm(button.dataset.action === 'confirmed' ? 'Confirmar disponibilidade e pagamento recebido desta reserva?' : 'Cancelar esta reserva e liberar os lugares que estavam separados?')) return;
+    const action = button.dataset.action;
+    const message = action === 'confirmed' ? 'Marcar este pagamento como pago e confirmar a reserva?'
+      : action === 'pending' ? 'Voltar este pagamento para pendente? A reserva continuará ocupando as vagas.'
+      : 'Cancelar esta reserva e liberar os lugares que estavam separados?';
+    if (!confirm(message)) return;
+    if (button.closest('[data-admin-panel="bookings"]')) adminActiveTab = 'bookings';
     button.disabled = true;
-    try { await adminFetch('PATCH', { id: button.dataset.id, status: button.dataset.action }); await loadAdmin(); showToast('Reserva atualizada'); }
-    catch (error) { showToast(error.message); button.disabled = false; }
+    try {
+      await adminFetch('PATCH', { id: button.dataset.id, status: action });
+      await loadAdmin();
+      showToast(action === 'confirmed' ? 'Pagamento marcado como pago.' : action === 'pending' ? 'Pagamento marcado como pendente.' : 'Reserva cancelada.');
+    } catch (error) { showToast(error.message); button.disabled = false; }
   }));
 }
 
