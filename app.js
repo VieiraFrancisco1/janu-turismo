@@ -754,27 +754,62 @@ function optionPeopleCount(fare, quantity) {
   return Math.max(1, Number(fare?.seats || 1)) * Math.max(1, Number(quantity || 1));
 }
 
-function paymentCalculatorMarkup(trip, fare, quantity) {
-  const total = Number(fare.amount || 0) * Math.max(1, Number(quantity || 1));
-  const parts = [];
+function bookingTotal(fare, quantity) {
+  const units = Math.max(1, Number(quantity || 1));
+  const people = optionPeopleCount(fare, units);
+  const amount = Number(fare?.amount || 0);
+  return Number(fare?.seats || 1) > 1 ? amount * units : amount * people;
+}
 
-  if (trip.pagamento?.pix) {
-    const pixMax = Math.max(1, parcelasDisponiveis(trip, fare, new Date()));
+function daysUntilTrip(trip, today = new Date()) {
+  const startDate = tripStartDate(trip);
+  if (!startDate) return Number.POSITIVE_INFINITY;
+  const start = new Date(`${startDate}T12:00:00`);
+  const reference = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
+  return Math.ceil((start - reference) / 86400000);
+}
+
+function configuredPixInstallments(trip, fare) {
+  if (Array.isArray(trip.pixMax) && trip.pixMax.length) {
+    const days = daysUntilTrip(trip);
+    const rule = [...trip.pixMax]
+      .sort((a, b) => b.daysMin - a.daysMin)
+      .find(item => days >= item.daysMin);
+    return Math.max(1, Number(rule?.maxInstallments || 1));
+  }
+  if (trip.pagamento?.pix) return Math.max(1, parcelasDisponiveis(trip, fare, new Date()));
+  return null;
+}
+
+function paymentCalculatorMarkup(trip, fare, quantity) {
+  const total = bookingTotal(fare, quantity);
+  const parts = [];
+  const pixMax = configuredPixInstallments(trip, fare);
+
+  if (pixMax) {
     parts.push(`<div class="payment-calc-option"><strong>Pix</strong><span>${pixMax > 1 ? `em até ${pixMax}x de ${money(total / pixMax)}` : money(total)}</span></div>`);
   } else if ((trip.payment || []).some(method => /pix/i.test(method))) {
-    parts.push(`<div class="payment-calc-option"><strong>Pix</strong><span>Condições confirmadas pela Janu</span></div>`);
+    parts.push('<div class="payment-calc-option"><strong>Pix</strong><span>Condições confirmadas pela Janu</span></div>');
   }
 
-  if (trip.pagamento?.cartao || (trip.payment || []).some(method => /cart[aã]o/i.test(method))) {
-    const card = trip.pagamento?.cartao || {};
-    const max = Number(card.maxParcelas || 0);
-    const surchargeKnown = card.acrescimoPercentual !== null && card.acrescimoPercentual !== undefined && Number.isFinite(Number(card.acrescimoPercentual));
+  const legacyCard = trip.pagamento?.cartao || {};
+  const cardMax = Number(trip.cardMax ?? legacyCard.maxParcelas ?? 0);
+  const rawSurcharge = trip.cardSurchargePercent ?? legacyCard.acrescimoPercentual;
+  const surchargeKnown = rawSurcharge !== null && rawSurcharge !== undefined && rawSurcharge !== '' && Number.isFinite(Number(rawSurcharge));
+  const hasCard = cardMax > 0 || trip.cardSurchargePercent != null || trip.pagamento?.cartao || (trip.payment || []).some(method => /cart[aã]o/i.test(method));
+
+  if (hasCard) {
     if (surchargeKnown) {
-      const adjusted = total * (1 + Number(card.acrescimoPercentual) / 100);
-      parts.push(`<div class="payment-calc-option"><strong>Cartão</strong><span>${max > 1 ? `até ${max}x de ${money(adjusted / max)} · ` : ''}${Number(card.acrescimoPercentual)}% de acréscimo · total ${money(adjusted)}</span></div>`);
+      const surcharge = Number(rawSurcharge);
+      const adjusted = total * (1 + surcharge / 100);
+      parts.push(`<div class="payment-calc-option"><strong>Cartão</strong><span>${cardMax > 1 ? `até ${cardMax}x de ${money(adjusted / cardMax)} · ` : ''}${surcharge}% de acréscimo · total ${money(adjusted)}</span></div>`);
     } else {
-      parts.push(`<div class="payment-calc-option"><strong>Cartão</strong><span>${max > 1 ? `até ${max}x · ` : ''}acréscimo a confirmar com a Janu</span></div>`);
+      parts.push(`<div class="payment-calc-option"><strong>Cartão</strong><span>${cardMax > 1 ? `até ${cardMax}x · ` : ''}acréscimo a confirmar com a Janu</span></div>`);
     }
+  }
+
+  if (trip.paymentNote) {
+    parts.push(`<p class="payment-note">${escapeHtml(trip.paymentNote)}</p>`);
   }
 
   return parts.length ? parts.join('') : '<div class="payment-calc-option"><strong>Pagamento</strong><span>Condições confirmadas pela Janu</span></div>';
@@ -832,7 +867,7 @@ function renderDetail(id) {
         </section>
 
         ${detailSections(trip)}
-        <a class="inline-contact" href="${waLink(`Olá, Janu Turismo! Tenho uma dúvida sobre ${trip.title}.`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Tirar uma dúvida com a Janu</a>
+        <a class="inline-contact" href="${waLink(`Olá, Janu Turismo! Tenho uma dúvida sobre ${trip.title} (${trip.date}).`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Tirar uma dúvida com a Janu</a>
       </div>
       ${siteFooter({ compact: true })}
     </main>
@@ -858,7 +893,7 @@ function renderDetail(id) {
     const fare = fareOptions[Number(fareSelect.value)] || fareOptions[0];
     const quantity = Math.max(1, Number(quantityInput.value || 1));
     const people = optionPeopleCount(fare, quantity);
-    const total = Number(fare.amount || 0) * quantity;
+    const total = bookingTotal(fare, quantity);
     const peopleText = `${people} ${people === 1 ? 'pessoa' : 'pessoas'}`;
     totalInside.textContent = money(total);
     totalBar.textContent = money(total);
@@ -884,7 +919,7 @@ function renderDetail(id) {
     const fare = fareOptions[Number(fareSelect.value)] || fareOptions[0];
     const quantity = Math.max(1, Number(quantityInput.value || 1));
     const people = optionPeopleCount(fare, quantity);
-    const total = Number(fare.amount || 0) * quantity;
+    const total = bookingTotal(fare, quantity);
     const boarding = String(new FormData(form).get('boarding') || '').trim();
 
     const message = `Olá! Tenho interesse no passeio ${trip.title} (${trip.date}). Opção: ${fare.label} · ${people} pessoa(s) · Embarque: ${boarding}. Valor total: ${money(total)}. Pode confirmar vagas?`;
@@ -934,8 +969,7 @@ function statusLabel(value) { return value === 'confirmed' ? 'Confirmada pela Ja
 function bookingContent(booking, token, demo = false) {
   const trip = TRIPS.find(item => item.id === booking.tripId);
   const name = `${booking.firstName} ${booking.lastName}`;
-  const recentCpf = lastBooking?.token === token ? lastBooking.cpf : null;
-  const message = `Olá, Janu Turismo! Fiz uma reserva pelo site e gostaria de confirmar os detalhes.\n\nReserva: ${booking.id}\nViagem: ${trip?.title || 'Viagem'}\nData: ${trip?.date || 'A confirmar'}\nNome: ${name}\nCPF: ${recentCpf || `final ${booking.cpfLast4}`}\nTelefone: ${booking.phone}\nPassageiros: ${booking.seats}\nEmbarque: ${booking.boarding || 'a combinar'}\nPagamento escolhido: ${paymentLabel(booking.payment)}\n\nPodem confirmar minha reserva?`;
+  const message = `Olá, Janu Turismo! Fiz uma reserva pelo site e gostaria de confirmar os detalhes.\n\nReserva: ${booking.id}\nViagem: ${trip?.title || 'Viagem'}\nData: ${trip?.date || 'A confirmar'}\nNome: ${name}\nCPF: final ${booking.cpfLast4}\nTelefone: ${booking.phone}\nPassageiros: ${booking.seats}\nEmbarque: ${booking.boarding || 'a combinar'}\nPagamento escolhido: ${paymentLabel(booking.payment)}\n\nPodem confirmar minha reserva?`;
   return `<div class="confirmation-card ${demo ? 'preview-card' : ''}">
     <span class="confirmation-icon">${icon(demo ? 'user' : 'check', 30)}</span>
     <span class="section-kicker">${demo ? 'EXEMPLO DE RESERVA' : 'RESERVA REGISTRADA'}</span>
@@ -1031,6 +1065,23 @@ function renderProfile() {
 }
 
 const lines = value => String(value || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+function pixRulesToText(trip) {
+  if (!Array.isArray(trip?.pixMax)) return '';
+  return trip.pixMax
+    .slice()
+    .sort((a, b) => b.daysMin - a.daysMin)
+    .map(rule => `${rule.daysMin}=${rule.maxInstallments}`)
+    .join('\n');
+}
+function parsePixRules(value) {
+  const rows = lines(value);
+  if (!rows.length) return [];
+  return rows.map(row => {
+    const match = row.match(/^(\d{1,3})\s*[=:]\s*(\d{1,2})$/);
+    if (!match) throw new Error('Faixa Pix inválida. Use o formato 60=5, uma regra por linha.');
+    return { daysMin: Number(match[1]), maxInstallments: Number(match[2]) };
+  }).sort((a, b) => b.daysMin - a.daysMin);
+}
 function fareRow(fare = { label: '', amount: '', seats: 1 }) {
   return `<div class="fare-row" data-fare-row><input name="fareLabel" aria-label="Nome da opção" placeholder="Individual, casal, criança" maxlength="80" value="${escapeHtml(fare.label)}" required /><input name="fareAmount" aria-label="Valor em reais" type="number" min="0" step="0.01" placeholder="Valor R$" value="${fare.amount}" required /><input name="fareSeats" aria-label="Pessoas na opção" type="number" min="1" max="10" value="${fare.seats || 1}" required /><input name="fareCity" aria-label="Embarque desta opção" placeholder="Cidade opcional" maxlength="80" value="${escapeHtml(fare.boardingCity || '')}" /><button type="button" data-remove-fare aria-label="Remover opção">×</button></div>`;
 }
