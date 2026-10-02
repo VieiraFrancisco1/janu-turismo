@@ -1557,3 +1557,37 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
 @media (prefers-reduced-motion: reduce) {
   .hero-track { transition: none; }
 }
+
+
+/* ETAPA 1 NOVO PROMPT: datas reais e status */
+.field-help {
+  display: block;
+  margin-top: 2px;
+  color: #647991;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.admin-trip-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.admin-trip-title > strong {
+  margin: 0;
+}
+.admin-ended-badge {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #fdeaea;
+  color: #962d2d !important;
+  font-size: 10px !important;
+  font-weight: 850;
+}
+.admin-trip-ended {
+  border-color: #ead6d6;
+  background: #fffafa;
+}

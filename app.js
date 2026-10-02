@@ -79,7 +79,7 @@ function tripAvailability(id) {
 
   if (!trip) return { key: 'unknown', text: 'Vagas a confirmar', soldOut: false };
   if (isTripPast(trip) || trip.status === 'encerrado') return { key: 'closed', text: 'Encerrado', soldOut: true };
-  if (trip.status === 'data-a-confirmar') return { key: 'date-pending', text: 'Data a confirmar', soldOut: false };
+  if (trip.dateTbc === true || trip.status === 'data-a-confirmar') return { key: 'date-pending', text: 'Data a confirmar', soldOut: false };
   if (trip.status === 'esgotado') return { key: 'sold-out', text: 'Esgotado', soldOut: true };
 
   if (!inventoryReady || !state || state.demo) {
@@ -99,8 +99,14 @@ function seatsText(id) {
   return tripAvailability(id).text;
 }
 
+function tripMinimumToConfirm(trip) {
+  const value = trip?.minToConfirm ?? trip?.minimoParaConfirmar ?? 0;
+  const minimum = Number(value);
+  return Number.isFinite(minimum) && minimum > 0 ? minimum : 0;
+}
+
 function minimumProgressMarkup(trip) {
-  const minimum = Number(trip.minimoParaConfirmar || 0);
+  const minimum = tripMinimumToConfirm(trip);
   if (!Number.isFinite(minimum) || minimum <= 0) return '';
   const occupied = Number.isFinite(Number(trip.vagasOcupadas)) ? Number(trip.vagasOcupadas) : 0;
   const missing = Math.max(0, minimum - occupied);
@@ -129,7 +135,7 @@ function updateAvailabilityUI() {
 
   document.querySelectorAll('[data-minimum-progress]').forEach(holder => {
     const trip = TRIPS.find(item => item.id === holder.dataset.minimumProgress);
-    const minimum = Number(holder.dataset.minimum || trip?.minimoParaConfirmar || 0);
+    const minimum = Number(holder.dataset.minimum || tripMinimumToConfirm(trip));
     if (!trip || !minimum) return;
     const state = inventory[trip.id];
     const occupied = inventoryReady && state && !state.demo
@@ -233,12 +239,45 @@ function fares(trip) {
     ...(trip.couplePrice ? [{ label: trip.coupleNote || 'Casal (2 pessoas)', amount: trip.couplePrice, seats: 2 }] : []),
   ];
 }
+function formatTripDisplayDate(startDate, endDate) {
+  const valid = value => /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+  if (!valid(startDate)) return '';
+  const start = new Date(`${startDate}T12:00:00`);
+  const endValue = valid(endDate) ? endDate : startDate;
+  const end = new Date(`${endValue}T12:00:00`);
+  const month = date => new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(date);
+
+  if (startDate === endValue) {
+    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long' }).format(start);
+  }
+  if (start.getFullYear() === end.getFullYear() && start.getMonth() === end.getMonth()) {
+    return `${String(start.getDate()).padStart(2, '0')} e ${String(end.getDate()).padStart(2, '0')} de ${month(end)}`;
+  }
+  return `${new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(start)} a ${new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(end)}`;
+}
+
 function normalizeTrip(trip) {
-  return { ...trip, image: trip.images?.[0] || trip.image || './assets/logo-janu.png',
+  const startDate = String(trip.startDate || trip.dataInicio || '');
+  const endDate = String(trip.endDate || trip.dataFim || startDate || '');
+  const minToConfirm = trip.minToConfirm ?? trip.minimoParaConfirmar ?? null;
+  const dateTbc = trip.dateTbc === true || trip.status === 'data-a-confirmar';
+  const generatedDate = formatTripDisplayDate(startDate, endDate);
+
+  return {
+    ...trip,
+    startDate,
+    endDate,
+    minToConfirm: minToConfirm === '' ? null : minToConfirm,
+    dateTbc,
+    date: String(trip.date || generatedDate || 'Data a confirmar'),
+    image: trip.images?.[0] || trip.image || './assets/logo-janu.png',
     boarding: Array.isArray(trip.boarding) ? trip.boarding : [],
     includes: Array.isArray(trip.includes) ? trip.includes : [],
     stops: Array.isArray(trip.stops) ? trip.stops : [],
-    published: trip.published !== false, special: trip.special === true, specialUntil: String(trip.specialUntil || '') };
+    published: trip.published !== false,
+    special: trip.special === true,
+    specialUntil: String(trip.specialUntil || ''),
+  };
 }
 
 function todayIso() {
@@ -288,21 +327,33 @@ function saveBoardingCity(value) {
   } catch { /* persistência indisponível neste navegador */ }
 }
 
+function tripStartDate(trip) {
+  const value = String(trip.startDate || trip.dataInicio || '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+}
+
+function tripEndDate(trip) {
+  const value = String(trip.endDate || trip.dataFim || tripStartDate(trip) || '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : '';
+}
+
+function compareTripsByStartDate(a, b) {
+  const dateA = tripStartDate(a) || '9999-12-31';
+  const dateB = tripStartDate(b) || '9999-12-31';
+  const byDate = dateA.localeCompare(dateB);
+  return byDate || String(a.title || '').localeCompare(String(b.title || ''), 'pt-BR');
+}
+
 function isTripPast(trip) {
   if (trip.status === 'encerrado') return true;
-  const iso = trip.dataFim || trip.dataInicio;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso || ''))) return false;
-  return iso < todayIso();
+  const endDate = tripEndDate(trip);
+  return Boolean(endDate && endDate < todayIso());
 }
 
 function upcomingTrips() {
   return TRIPS
     .filter(trip => trip.published && !isTripPast(trip))
-    .sort((a, b) => {
-      const dateA = /^\d{4}-\d{2}-\d{2}$/.test(String(a.dataInicio || '')) ? a.dataInicio : '9999-12-31';
-      const dateB = /^\d{4}-\d{2}-\d{2}$/.test(String(b.dataInicio || '')) ? b.dataInicio : '9999-12-31';
-      return dateA.localeCompare(dateB);
-    });
+    .sort(compareTripsByStartDate);
 }
 
 function tripMatchesFilter(trip, selected = filter) {
@@ -915,12 +966,14 @@ function fareRow(fare = { label: '', amount: '', seats: 1 }) {
 }
 function tripEditor(trip = null) {
   const editing = Boolean(trip);
-  const t = trip || { title: '', subtitle: '', category: 'Praia', kind: 'Bate e volta', date: '', price: 0, boarding: [], includes: [], stops: [], payment: ['Pix', 'Cartão'], images: [], published: false, special: false, specialUntil: '', status: 'aberto', minimoParaConfirmar: '' };
+  const t = trip || { title: '', subtitle: '', category: 'Praia', kind: 'Bate e volta', date: '', startDate: '', endDate: '', price: 0, boarding: [], includes: [], stops: [], payment: ['Pix', 'Cartão'], images: [], published: false, special: false, specialUntil: '', status: 'aberto', minToConfirm: '', dateTbc: false };
   return `<form id="trip-editor" class="admin-editor"><h2>${editing ? 'Editar viagem' : 'Adicionar viagem'}</h2><p>Preencha os dados que se aplicam a este passeio. Horários e itens opcionais podem ficar vazios.</p>
     <div class="form-grid"><label>Destino / nome<input name="title" value="${escapeHtml(t.title)}" maxlength="100" required /></label><label>Chamada curta<input name="subtitle" value="${escapeHtml(t.subtitle || '')}" maxlength="100" placeholder="Ex.: Natal de Luz" /></label></div>
     <div class="form-grid"><label>Tipo<select name="kind">${['Bate e volta', 'Viagem com hospedagem', 'Passeio', 'Excursão'].map(kind => `<option ${kind === t.kind ? 'selected' : ''}>${kind}</option>`).join('')}</select></label><label>Categoria<input name="category" value="${escapeHtml(t.category || 'Praia')}" maxlength="40" placeholder="Praia, Serra, Parque..." required /></label></div>
-    <label>Data exibida<input name="date" value="${escapeHtml(t.date || '')}" placeholder="Ex.: 19 e 20 de dezembro" maxlength="80" required /></label>
-    <div class="form-grid"><label>Status<select name="status">${[['aberto','Aberto'],['vagas-limitadas','Vagas limitadas'],['esgotado','Esgotado'],['data-a-confirmar','Data a confirmar'],['encerrado','Encerrado']].map(([value,label]) => `<option value="${value}" ${value === (t.status || 'aberto') ? 'selected' : ''}>${label}</option>`).join('')}</select></label><label>Mínimo para confirmar saída (opcional)<input name="minimoParaConfirmar" type="number" min="1" max="500" value="${escapeHtml(t.minimoParaConfirmar || '')}" placeholder="Ex.: 30" /></label></div>
+    <div class="form-grid"><label>Data de início<input name="startDate" type="date" value="${escapeHtml(t.startDate || t.dataInicio || '')}" /></label><label>Data de fim<input name="endDate" type="date" value="${escapeHtml(t.endDate || t.dataFim || '')}" /></label></div>
+    <label>Data exibida <small class="field-help">Opcional. Se ficar vazia, o site gera automaticamente pelas datas acima.</small><input name="date" value="${escapeHtml(t.date || '')}" placeholder="Ex.: 19 e 20 de dezembro" maxlength="80" /></label>
+    <div class="form-grid"><label>Status<select name="status">${[['aberto','Aberto'],['vagas-limitadas','Vagas limitadas'],['esgotado','Esgotado'],['encerrado','Encerrado']].map(([value,label]) => `<option value="${value}" ${value === (t.status === 'data-a-confirmar' ? 'aberto' : (t.status || 'aberto')) ? 'selected' : ''}>${label}</option>`).join('')}</select></label><label>Mínimo para confirmar saída (opcional)<input name="minToConfirm" type="number" min="1" max="500" value="${escapeHtml(t.minToConfirm ?? t.minimoParaConfirmar ?? '')}" placeholder="Ex.: 30" /></label></div>
+    <label class="admin-toggle"><input name="dateTbc" type="checkbox" ${t.dateTbc || t.status === 'data-a-confirmar' ? 'checked' : ''} /> Data a confirmar</label>
     <div class="form-grid"><label>Horário de saída (opcional)<input name="startTime" value="${escapeHtml(t.startTime || '')}" placeholder="Ex.: 04h30" maxlength="60" /></label><label>Horário de chegada (opcional)<input name="arrivalTime" value="${escapeHtml(t.arrivalTime || '')}" placeholder="Ex.: 22h" maxlength="60" /></label></div>
     <label>Descrição curta<textarea name="blurb" rows="2" maxlength="400">${escapeHtml(t.blurb || '')}</textarea></label>
     <fieldset><legend>Valores e modalidades</legend><p>Informe cada valor anunciado. “Pessoas” indica quantas vagas a modalidade usa.</p><div id="fare-rows">${fares(t).map(fareRow).join('')}</div><button type="button" id="add-fare">+ Adicionar valor</button></fieldset>
@@ -973,8 +1026,11 @@ function openTripEditor(trip = null) {
     const d = new FormData(form);
     const options = [...form.querySelectorAll('[data-fare-row]')].map(row => ({ label: row.querySelector('[name="fareLabel"]').value.trim(), amount: Number(row.querySelector('[name="fareAmount"]').value), seats: Number(row.querySelector('[name="fareSeats"]').value), boardingCity: row.querySelector('[name="fareCity"]').value.trim() }));
     const id = trip?.id || `${String(d.get('title')).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 35)}-${Date.now().toString(36)}`;
-    const data = { id, title: String(d.get('title')).trim(), subtitle: String(d.get('subtitle')).trim(), category: String(d.get('category')).trim(), kind: String(d.get('kind')), date: String(d.get('date')).trim(), startTime: String(d.get('startTime')).trim(), arrivalTime: String(d.get('arrivalTime')).trim(), blurb: String(d.get('blurb')).trim(),
-      price: options[0].amount, priceNote: options[0].label, fareOptions: options, includes: lines(d.get('includes')).map(item => ['check', item]), stops: lines(d.get('stops')).map(item => [item, '']), boarding: lines(d.get('boarding')), notice: String(d.get('notice')).trim(), payment: lines(d.get('payment')), images, image: trip?.image || './assets/logo-janu.png', status: String(d.get('status') || 'aberto'), minimoParaConfirmar: d.get('minimoParaConfirmar') ? Number(d.get('minimoParaConfirmar')) : null, published: d.get('published') === 'on', special: d.get('special') === 'on', specialUntil: String(d.get('specialUntil') || '') };
+    const startDate = String(d.get('startDate') || '');
+    const endDate = String(d.get('endDate') || startDate || '');
+    const typedDate = String(d.get('date') || '').trim();
+    const data = { id, title: String(d.get('title')).trim(), subtitle: String(d.get('subtitle')).trim(), category: String(d.get('category')).trim(), kind: String(d.get('kind')), startDate, endDate, date: typedDate || formatTripDisplayDate(startDate, endDate) || 'Data a confirmar', startTime: String(d.get('startTime')).trim(), arrivalTime: String(d.get('arrivalTime')).trim(), blurb: String(d.get('blurb')).trim(),
+      price: options[0].amount, priceNote: options[0].label, fareOptions: options, includes: lines(d.get('includes')).map(item => ['check', item]), stops: lines(d.get('stops')).map(item => [item, '']), boarding: lines(d.get('boarding')), notice: String(d.get('notice')).trim(), payment: lines(d.get('payment')), images, image: trip?.image || './assets/logo-janu.png', status: String(d.get('status') || 'aberto'), minToConfirm: d.get('minToConfirm') ? Number(d.get('minToConfirm')) : null, dateTbc: d.get('dateTbc') === 'on', published: d.get('published') === 'on', special: d.get('special') === 'on', specialUntil: String(d.get('specialUntil') || '') };
     const button = form.querySelector('[type="submit"]'); button.disabled = true;
     try { await adminSaveTrip(data); await loadCatalog(); await loadAdmin(); showToast('Viagem salva. Configure e libere as vagas.'); }
     catch (error) { const warning = form.querySelector('#trip-error'); warning.textContent = error.message; warning.hidden = false; button.disabled = false; }
@@ -997,7 +1053,7 @@ async function loadAdmin() {
   const { trips, bookings } = await adminFetch();
   const content = app.querySelector('#admin-content');
   if (!content) return;
-  content.innerHTML = `<div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Defina a capacidade real antes de liberar reservas. Viagens desmarcadas ficam sem novos agendamentos.</p><div class="admin-trips">${trips.map(trip => `<form class="admin-trip" data-id="${trip.id}"><strong>${escapeHtml(tripName(trip.id))}</strong><span>${trip.reserved} reservadas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`).join('')}</div><div id="admin-editor-slot"></div>
+  content.innerHTML = `<div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Defina a capacidade real antes de liberar reservas. Viagens desmarcadas ficam sem novos agendamentos.</p><div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => { const catalogTrip = TRIPS.find(item => item.id === trip.id); const ended = catalogTrip && isTripPast(catalogTrip); return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}"><div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div><span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservadas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`; }).join('')}</div><div id="admin-editor-slot"></div>
     <section class="manual-section"><h2>Adicionar reserva recebida pelo WhatsApp</h2><p>O passageiro ocupa as vagas imediatamente. Informe o e-mail usado no site para mostrar a reserva na conta dele.</p><form id="manual-booking" class="admin-editor"><label>Viagem<select name="tripId" required>${TRIPS.map(trip => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.title)} · ${escapeHtml(trip.date)}</option>`).join('')}</select></label><div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div><div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div><div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div><label>E-mail do cliente no site (opcional)<input name="email" type="email" placeholder="Para aparecer em Minhas reservas" /></label><button type="submit">Salvar passageiro e descontar vagas</button><p id="manual-error" class="form-error" hidden></p></form></section>
     <h2>Últimas reservas</h2><div class="admin-bookings">${bookings.length ? bookings.map(booking => `<article><strong>${escapeHtml(booking.id)} · ${escapeHtml(tripName(booking.tripId))}</strong><p>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)} · CPF final ${escapeHtml(booking.cpfLast4)} · ${escapeHtml(booking.phone)}</p><p>${booking.seats} passageiros · ${booking.source === 'whatsapp' ? 'WhatsApp · ' : ''}${paymentLabel(booking.payment)} · ${escapeHtml(statusLabel(booking.status))}</p>${booking.status === 'pending' ? `<button data-action="confirmed" data-id="${booking.id}">Confirmar</button>` : ''}${booking.status !== 'cancelled' ? `<button data-action="cancelled" data-id="${booking.id}">Cancelar e liberar vagas</button>` : ''}</article>`).join('') : '<p>Nenhuma reserva registrada.</p>'}</div>`;
   content.querySelector('#new-trip').onclick = () => openTripEditor();

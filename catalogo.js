@@ -15,13 +15,13 @@ export const PASSEIOS_SEED = [
     subtitulo: 'Natal de Luz 2026',
     destino: 'Guaramiranga',
     categoria: 'serra',
-    dataInicio: '2026-12-19',
-    dataFim: '2026-12-20',
+    startDate: '2026-12-19',
+    endDate: '2026-12-20',
     duracao: '2 dias',
     status: 'aberto',
     vagasTotais: null,
     vagasOcupadas: null,
-    minimoParaConfirmar: null,
+    minToConfirm: null,
     opcoesPreco: [
       { id: 'individual', nome: 'Individual', preco: 480, por: 'pessoa', pessoasIncluidas: 1 },
       { id: 'casal', nome: 'Casal (2 pessoas)', preco: 1000, por: 'casal', pessoasIncluidas: 2 },
@@ -78,13 +78,13 @@ export const PASSEIOS_SEED = [
     subtitulo: 'Serra da Ibiapaba',
     destino: 'Sítio do Bosco & Ubajara',
     categoria: 'serra',
-    dataInicio: '2026-10-17',
-    dataFim: '2026-10-18',
+    startDate: '2026-10-17',
+    endDate: '2026-10-18',
     duracao: '2 dias',
     status: 'aberto',
     vagasTotais: null,
     vagasOcupadas: null,
-    minimoParaConfirmar: null,
+    minToConfirm: null,
     opcoesPreco: [
       { id: 'individual', nome: 'Individual', preco: 450, por: 'pessoa', pessoasIncluidas: 1 },
       { id: 'casal', nome: 'Casal', preco: 950, por: 'casal', pessoasIncluidas: 2 },
@@ -123,13 +123,14 @@ export const PASSEIOS_SEED = [
     subtitulo: 'Especial Mês das Crianças',
     destino: 'Arajara Park',
     categoria: 'parque',
-    dataInicio: '2026-10-10',
-    dataFim: '2026-10-10',
+    startDate: '2026-10-10',
+    endDate: '2026-10-10',
     duracao: 'Bate e volta',
-    status: 'data-a-confirmar',
+    status: 'aberto',
+    dateTbc: true,
     vagasTotais: null,
     vagasOcupadas: null,
-    minimoParaConfirmar: null,
+    minToConfirm: null,
     opcoesPreco: [
       { id: 'individual', nome: 'Individual', preco: 160, por: 'pessoa', pessoasIncluidas: 1 },
     ],
@@ -154,13 +155,13 @@ export const PASSEIOS_SEED = [
     subtitulo: 'Hotel Terraço',
     destino: 'Praia de Lagoinha',
     categoria: 'praia',
-    dataInicio: '2026-12-12',
-    dataFim: '2026-12-13',
+    startDate: '2026-12-12',
+    endDate: '2026-12-13',
     duracao: '2 dias',
     status: 'aberto',
     vagasTotais: null,
     vagasOcupadas: null,
-    minimoParaConfirmar: null,
+    minToConfirm: null,
     opcoesPreco: [
       { id: 'quarto-casal', nome: 'Quarto casal ou 2 pessoas', preco: 800, por: 'quarto', pessoasIncluidas: 2 },
       { id: 'triplo-quadruplo', nome: 'Quarto triplo ou quádruplo', preco: 380, por: 'pessoa', pessoasIncluidas: 1 },
@@ -185,13 +186,13 @@ export const PASSEIOS_SEED = [
     subtitulo: 'Passeio bate e volta',
     destino: 'Morro Branco',
     categoria: 'praia',
-    dataInicio: '2026-09-06',
-    dataFim: '2026-09-06',
+    startDate: '2026-09-06',
+    endDate: '2026-09-06',
     duracao: 'Bate e volta',
     status: 'encerrado',
     vagasTotais: null,
     vagasOcupadas: null,
-    minimoParaConfirmar: null,
+    minToConfirm: null,
     opcoesPreco: [
       { id: 'individual', nome: 'Individual', preco: 130, por: 'pessoa', pessoasIncluidas: 1 },
     ],
@@ -216,14 +217,14 @@ export const PASSEIOS_SEED = [
     subtitulo: 'Sol, lagoas e pôr do sol',
     destino: 'Jericoacoara',
     categoria: 'praia',
-    dataInicio: null,
-    dataFim: null,
+    startDate: null,
+    endDate: null,
     dataTexto: '06 de dezembro',
     duracao: 'Bate e volta',
     status: 'aberto',
     vagasTotais: null,
     vagasOcupadas: null,
-    minimoParaConfirmar: null,
+    minToConfirm: null,
     opcoesPreco: [
       { id: 'individual', nome: 'Individual', preco: 320, por: 'pessoa', pessoasIncluidas: 1 },
     ],
@@ -255,23 +256,25 @@ function formatarData(iso) {
 
 export function formatarPeriodo(passeio) {
   if (passeio.dataTexto) return passeio.dataTexto;
-  if (!passeio.dataInicio) return 'Data a confirmar';
-  if (!passeio.dataFim || passeio.dataFim === passeio.dataInicio) return formatarData(passeio.dataInicio);
-  const inicio = dataLocal(passeio.dataInicio);
-  const fim = dataLocal(passeio.dataFim);
+  const startDate = passeio.startDate || passeio.dataInicio;
+  const endDate = passeio.endDate || passeio.dataFim || startDate;
+  if (!startDate) return 'Data a confirmar';
+  if (!endDate || endDate === startDate) return formatarData(startDate);
+  const inicio = dataLocal(startDate);
+  const fim = dataLocal(endDate);
   if (!inicio || !fim) return 'Data a confirmar';
   if (inicio.getMonth() === fim.getMonth()) {
     const mes = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(fim);
     return `${String(inicio.getDate()).padStart(2, '0')} e ${String(fim.getDate()).padStart(2, '0')} de ${mes}`;
   }
-  return `${formatarData(passeio.dataInicio)} a ${formatarData(passeio.dataFim)}`;
+  return `${formatarData(startDate)} a ${formatarData(endDate)}`;
 }
 
 export function parcelasDisponiveis(passeio, opcao, hoje = new Date()) {
   const opcaoId = typeof opcao === 'string' ? opcao : opcao?.id;
   if (!passeio?.pagamento?.pix || !opcaoId) return 1;
 
-  const inicio = dataLocal(passeio.dataInicio);
+  const inicio = dataLocal(passeio.startDate || passeio.dataInicio);
   const referencia = hoje instanceof Date
     ? new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 12)
     : dataLocal(String(hoje));
@@ -343,6 +346,10 @@ export function adaptarPasseioParaApp(passeio) {
     ...passeio,
     title: passeio.titulo,
     subtitle: passeio.subtitulo || '',
+    startDate: passeio.startDate || passeio.dataInicio || '',
+    endDate: passeio.endDate || passeio.dataFim || passeio.startDate || passeio.dataInicio || '',
+    minToConfirm: passeio.minToConfirm ?? passeio.minimoParaConfirmar ?? null,
+    dateTbc: passeio.dateTbc === true || passeio.status === 'data-a-confirmar',
     date: formatarPeriodo(passeio),
     price: menorPrecoPorPessoa(opcoes),
     priceNote: primeiroPreco.nome,

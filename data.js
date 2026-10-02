@@ -119,6 +119,10 @@ export async function adminSaveTrip(trip) {
   requireUser();
   if (!validTripId(trip.id) || !trip.title?.trim() || trip.title.length > 100 || !Number.isFinite(trip.price) || trip.price < 0 ||
       (trip.specialUntil && !/^\d{4}-\d{2}-\d{2}$/.test(trip.specialUntil)) ||
+      (trip.startDate && !/^\d{4}-\d{2}-\d{2}$/.test(trip.startDate)) ||
+      (trip.endDate && !/^\d{4}-\d{2}-\d{2}$/.test(trip.endDate)) ||
+      (trip.startDate && trip.endDate && trip.endDate < trip.startDate) ||
+      (trip.minToConfirm != null && (!Number.isInteger(trip.minToConfirm) || trip.minToConfirm < 1 || trip.minToConfirm > 500)) ||
       !Array.isArray(trip.images) || trip.images.length > 4 || trip.images.some(image => !image.startsWith('data:image/jpeg;base64,') || image.length > 160000)) throw new Error('Confira os dados e fotos da viagem.');
   const { id, ...fields } = trip;
   await setDoc(doc(db, 'trip_catalog', id), fields);
