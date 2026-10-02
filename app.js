@@ -317,7 +317,7 @@ function bottomNav(active) {
   return `<nav class="bottom-nav" aria-label="Navegação principal"><div class="bottom-nav-inner">${items.map(([glyph, label, url, key]) => `<a href="${url}" class="nav-item ${active === key ? 'active' : ''}" ${active === key ? 'aria-current="page"' : ''}>${icon(glyph, 26)}<span>${label}</span></a>`).join('')}</div></nav>`;
 }
 
-const FILTER_OPTIONS = ['Todos', 'Bate e volta', 'Fim de semana', 'Parques', 'Praia', 'Serra'];
+const FILTER_OPTIONS = ['Todos', 'Bate e volta', 'Com hospedagem', 'Parques', 'Praia', 'Serra'];
 
 function saveBoardingCity(value) {
   boardingCity = value;
@@ -356,15 +356,26 @@ function upcomingTrips() {
     .sort(compareTripsByStartDate);
 }
 
+function tripHasAccommodation(trip) {
+  const kind = `${trip.kind || ''} ${trip.duracao || ''}`.toLowerCase();
+  const start = tripStartDate(trip);
+  const end = tripEndDate(trip);
+  return Boolean(trip.hospedagem) || kind.includes('hospedagem') || Boolean(start && end && start !== end);
+}
+
+function tripBoardingCities(trip) {
+  const direct = Array.isArray(trip.boarding) ? trip.boarding : [];
+  const fareCities = fares(trip).map(fare => fare.boardingCity).filter(Boolean);
+  return [...new Set([...direct, ...fareCities].map(city => String(city).trim()).filter(Boolean))];
+}
+
 function tripMatchesFilter(trip, selected = filter) {
   if (selected === 'Todos') return true;
   const category = `${trip.categoria || ''} ${trip.category || ''}`.toLowerCase();
   const kind = `${trip.kind || ''} ${trip.duracao || ''}`.toLowerCase();
-  if (selected === 'Bate e volta') return kind.includes('bate e volta');
-  if (selected === 'Fim de semana') {
-    return Boolean(trip.hospedagem) || kind.includes('hospedagem') ||
-      (trip.dataInicio && trip.dataFim && trip.dataInicio !== trip.dataFim);
-  }
+
+  if (selected === 'Bate e volta') return kind.includes('bate e volta') && !tripHasAccommodation(trip);
+  if (selected === 'Com hospedagem') return tripHasAccommodation(trip);
   if (selected === 'Parques') return category.includes('parque');
   if (selected === 'Praia') return category.includes('praia');
   if (selected === 'Serra') return category.includes('serra');
@@ -372,18 +383,18 @@ function tripMatchesFilter(trip, selected = filter) {
 }
 
 function tripMatchesBoarding(trip) {
-  return !boardingCity || (trip.boarding || []).some(city => city === boardingCity);
+  return !boardingCity || tripBoardingCities(trip).includes(boardingCity);
 }
 
 function availableBoardingCities() {
-  return [...new Set(upcomingTrips().flatMap(trip => trip.boarding || []).filter(Boolean))]
+  return [...new Set(upcomingTrips().flatMap(trip => tripBoardingCities(trip)).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, 'pt-BR'));
 }
 
 function boardingSelector() {
   const cities = availableBoardingCities();
   if (boardingCity && !cities.includes(boardingCity)) saveBoardingCity('');
-  return `<label class="boarding-filter"><span>${icon('pin', 18)} Cidade de embarque</span><select data-boarding-filter aria-label="Filtrar por cidade de embarque"><option value="">Todas as cidades</option>${cities.map(city => `<option value="${escapeHtml(city)}" ${city === boardingCity ? 'selected' : ''}>${escapeHtml(city)}</option>`).join('')}</select></label>`;
+  return `<label class="boarding-filter"><span>${icon('pin', 18)} Sair de:</span><select data-boarding-filter aria-label="Filtrar viagens pela cidade de embarque"><option value="">Todas as cidades</option>${cities.map(city => `<option value="${escapeHtml(city)}" ${city === boardingCity ? 'selected' : ''}>${escapeHtml(city)}</option>`).join('')}</select></label>`;
 }
 
 function filterChips() {
@@ -391,7 +402,7 @@ function filterChips() {
 }
 
 function boardingSummary(trip) {
-  const places = trip.boarding || [];
+  const places = tripBoardingCities(trip);
   if (!places.length) return 'Embarque a confirmar';
   if (places.length <= 2) return places.join(' · ');
   return `${places.slice(0, 2).join(' · ')} +${places.length - 2}`;
@@ -722,7 +733,7 @@ function detailSections(trip) {
       <section class="detail-section package-column"><h2>Não incluso</h2>${notIncluded.length ? `<ul class="package-list package-list-not-included">${notIncluded.map(label => `<li>${icon('close', 18)}<span>${escapeHtml(label)}</span></li>`).join('')}</ul>` : '<p class="section-note">Não informado no anúncio.</p>'}</section>
     </div>
     ${route.length ? `<section class="detail-section"><h2>Roteiro do passeio</h2><ol class="stops-list">${route.map((name, index) => `<li><span class="stop-number">${String(index + 1).padStart(2, '0')}</span><span><strong>${escapeHtml(name)}</strong></span></li>`).join('')}</ol></section>` : ''}
-    <section class="detail-section"><h2>Embarques</h2>${trip.boarding.length ? `<div class="boarding-options">${trip.boarding.map(place => `<span>${icon('pin', 17)} ${escapeHtml(place)}</span>`).join('')}</div>` : `<div class="pending-info">${icon('pin', 22)}<span>Cidades de embarque a confirmar com a agência.</span></div>`}</section>
+    <section class="detail-section"><h2>Embarques</h2>${tripBoardingCities(trip).length ? `<div class="boarding-options">${tripBoardingCities(trip).map(place => `<span>${icon('pin', 17)} ${escapeHtml(place)}</span>`).join('')}</div>` : `<div class="pending-info">${icon('pin', 22)}<span>Cidades de embarque a confirmar com a agência.</span></div>`}</section>
     <section class="detail-section policy-summary" id="policy-summary"><span class="section-kicker">ANTES DE RESERVAR</span><h2>Resumo das políticas</h2><ul><li>Reserva efetivada mediante pagamento parcial no ato.</li><li>O restante deve ser quitado até 48h antes do passeio.</li><li>Pagamento por Pix ou cartão; não aceitamos dinheiro em espécie nem pagamento no momento do embarque.</li><li>Vagas são limitadas e a disponibilidade final é confirmada pela Janu.</li></ul><div class="policy-summary-links"><a href="/politica-reservas.html">Política de reservas</a><a href="/politica-cancelamento.html">Política de cancelamento</a></div></section>`;
 }
 
@@ -732,8 +743,9 @@ function renderDetail(id) {
 
   const fareOptions = fares(trip);
   const galleryImages = [...new Set([trip.image, ...(trip.images || [])].filter(Boolean))];
-  const boardingField = trip.boarding.length
-    ? `<select name="boarding" required><option value="">Escolha o embarque</option>${trip.boarding.map(place => `<option value="${escapeHtml(place)}">${escapeHtml(place)}</option>`).join('')}</select>`
+  const detailBoardingCities = tripBoardingCities(trip);
+  const boardingField = detailBoardingCities.length
+    ? `<select name="boarding" required><option value="">Escolha o embarque</option>${detailBoardingCities.map(place => `<option value="${escapeHtml(place)}">${escapeHtml(place)}</option>`).join('')}</select>`
     : '<input name="boarding" maxlength="80" placeholder="Cidade de embarque" required />';
 
   app.innerHTML = `<header class="detail-header wrap"><a href="#/viagens" aria-label="Voltar às viagens">${icon('arrowLeft', 26)}</a><span>Detalhes da viagem</span><button type="button" id="share" aria-label="Compartilhar viagem">${icon('share', 25)}</button></header>
