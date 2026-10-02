@@ -1,3 +1,4 @@
+import { photoCarouselMarkup, explorePhotosMarkup, initPhotoGallery } from './photo-gallery.js';
 import { initScrollGuide } from './scroll-guide.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
 import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
@@ -23,10 +24,7 @@ const starterTrips = TRIPS.map(trip => ({ ...trip, published: trip.published !==
 TRIPS = starterTrips.map(normalizeTrip);
 let filter = 'Todos';
 let query = '';
-let boardingCity = (() => {
-  try { return localStorage.getItem('janu-boarding-city') || ''; }
-  catch { return ''; }
-})();
+let disposeDetailPhotos = () => {};
 
 const paths = {
   arrowLeft: '<path d="m15 18-6-6 6-6"/>',
@@ -48,6 +46,7 @@ const paths = {
   close: '<path d="M18 6 6 18M6 6l12 12"/>',
   check: '<path d="m4 12 5 5L20 6"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3-7 8-7s8 3 8 7"/>',
+  money: '<rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9h.01M18 15h.01"/>',
   card: '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
   instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>',
@@ -417,7 +416,6 @@ function header() {
     <nav class="side-menu-links">
       <button type="button" data-info-open="depoimentos"><strong>💬 Depoimentos</strong><span>Veja feedbacks de clientes</span>${icon('arrowRight', 19)}</button>
       <button type="button" data-info-open="politicas"><strong>📋 Políticas</strong><span>Reserva e cancelamento</span>${icon('arrowRight', 19)}</button>
-      <button type="button" data-info-open="ajuda"><strong>🆘 Ajuda</strong><span>Fale com a equipe da Janu</span>${icon('arrowRight', 19)}</button>
       <button type="button" data-info-open="pagamento"><strong>💳 Formas de pagamento</strong><span>Pix, cartão e condições</span>${icon('arrowRight', 19)}</button>
     </nav>
   </aside>
@@ -430,14 +428,6 @@ function bottomNav(active) {
 }
 
 const FILTER_OPTIONS = ['Todos', 'Bate e volta', 'Com hospedagem', 'Parques', 'Praia', 'Serra'];
-
-function saveBoardingCity(value) {
-  boardingCity = value;
-  try {
-    if (value) localStorage.setItem('janu-boarding-city', value);
-    else localStorage.removeItem('janu-boarding-city');
-  } catch { /* persistência indisponível neste navegador */ }
-}
 
 function tripStartDate(trip) {
   const value = String(trip.startDate || trip.dataInicio || '');
@@ -492,21 +482,6 @@ function tripMatchesFilter(trip, selected = filter) {
   if (selected === 'Praia') return category.includes('praia');
   if (selected === 'Serra') return category.includes('serra');
   return true;
-}
-
-function tripMatchesBoarding(trip) {
-  return !boardingCity || tripBoardingCities(trip).includes(boardingCity);
-}
-
-function availableBoardingCities() {
-  return [...new Set(upcomingTrips().flatMap(trip => tripBoardingCities(trip)).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
-}
-
-function boardingSelector() {
-  const cities = availableBoardingCities();
-  if (boardingCity && !cities.includes(boardingCity)) saveBoardingCity('');
-  return `<label class="boarding-filter"><span>${icon('pin', 18)} Sair de:</span><select data-boarding-filter aria-label="Filtrar viagens pela cidade de embarque"><option value="">Todas as cidades</option>${cities.map(city => `<option value="${escapeHtml(city)}" ${city === boardingCity ? 'selected' : ''}>${escapeHtml(city)}</option>`).join('')}</select></label>`;
 }
 
 function filterChips() {
@@ -732,12 +707,7 @@ function bindDiscoveryControls({ home = false } = {}) {
     if (home) renderHome();
     else updateList();
   }));
-  const selector = app.querySelector('[data-boarding-filter]');
-  if (selector) selector.addEventListener('change', event => {
-    saveBoardingCity(event.target.value);
-    if (home) renderHome();
-    else updateList();
-  });
+
 }
 
 function renderHome() {
@@ -768,7 +738,7 @@ function filteredTrips() {
   const normalized = query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   return upcomingTrips().filter(trip => {
     const text = `${trip.title} ${trip.subtitle} ${trip.category} ${trip.kind}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    return tripMatchesFilter(trip) && tripMatchesBoarding(trip) && text.includes(normalized);
+    return tripMatchesFilter(trip) && text.includes(normalized);
   });
 }
 
@@ -776,13 +746,11 @@ function updateList() {
   const grid = app.querySelector('#all-trips');
   if (!grid) return;
   const found = filteredTrips();
-  grid.innerHTML = found.length ? found.map(tripCard).join('') : `<div class="empty-state"><h2>Nenhuma viagem encontrada</h2><p>Tente outra busca, cidade de embarque ou tipo de passeio.</p></div>`;
+  grid.innerHTML = found.length ? found.map(tripCard).join('') : `<div class="empty-state"><h2>Nenhuma viagem encontrada</h2><p>Tente outra busca ou tipo de passeio.</p></div>`;
   app.querySelectorAll('[data-filter]').forEach(button => {
     button.classList.toggle('selected', button.dataset.filter === filter);
     button.setAttribute('aria-pressed', String(button.dataset.filter === filter));
   });
-  const selector = app.querySelector('[data-boarding-filter]');
-  if (selector) selector.value = boardingCity;
   bindImageSkeletons(grid);
 }
 
@@ -790,7 +758,7 @@ function renderTrips() {
   app.innerHTML = `${header()}<main class="wrap page trips-page" id="main">
     <div class="list-intro"><h1>Viagens <svg class="title-umbrella" viewBox="0 0 24 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path fill="currentColor" d="M2 12a10 10 0 0 1 20 0c-2-2-4-2-6 0-2-2-6-2-8 0-2-2-4-2-6 0Z"/><path d="M12 1v1m0 10v10a3 3 0 0 0 6 0"/></svg></h1></div>
     <label class="search-box">${icon('search', 23)}<span class="sr-only">Buscar destino</span><input id="search" type="search" autocomplete="off" placeholder="Buscar destino" aria-label="Buscar destino" /></label>
-    <div class="trips-discovery">${boardingSelector()}${filterChips()}</div>
+    <div class="trips-discovery">${filterChips()}</div>
     <div id="all-trips" class="trip-grid" aria-live="polite"></div>
     ${siteFooter({ compact: true })}
   </main>${bottomNav('trips')}`;
@@ -896,9 +864,8 @@ function renderDetail(id) {
 
   app.innerHTML = `<header class="detail-header wrap"><a href="#/viagens" aria-label="Voltar às viagens">${icon('arrowLeft', 26)}</a><span>Detalhes da viagem</span><button type="button" id="share" aria-label="Compartilhar viagem">${icon('share', 25)}</button></header>
     <main class="wrap detail-page detail-page-whatsapp" id="main">
-      <div class="detail-hero"><img class="detail-cover" src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" /><div class="detail-hero-shade"></div><div class="detail-hero-text"><span>${escapeHtml(trip.kind)}</span><h1>${escapeHtml(trip.title)}</h1><p>${icon('calendar', 19)} ${escapeHtml(trip.date)}${trip.duracao ? ` · ${escapeHtml(trip.duracao)}` : ''}</p></div></div>
+      <div class="detail-hero">${photoCarouselMarkup(galleryImages, trip.title)}<div class="detail-hero-shade"></div><div class="detail-hero-text"><span>${escapeHtml(trip.kind)}</span><h1>${escapeHtml(trip.title)}</h1><p>${icon('calendar', 19)} ${escapeHtml(trip.date)}${trip.duracao ? ` · ${escapeHtml(trip.duracao)}` : ''}</p></div>${explorePhotosMarkup()}</div>
       <div class="detail-body">
-        ${galleryImages.length > 1 ? `<div class="detail-gallery" aria-label="Galeria de fotos">${galleryImages.map((src, i) => `<button type="button" data-gallery="${i}" aria-label="Ver foto ${i + 1}"><img src="${src}" alt="Foto ${i + 1} de ${escapeHtml(trip.title)}" loading="lazy" decoding="async" /></button>`).join('')}</div>` : ''}
         <div class="availability-panel">${icon('ticket', 22)}<div><strong data-seats="${trip.id}">${seatsText(trip.id)}</strong><small data-reservation-count="${trip.id}">Quantidade de reservas a confirmar</small></div></div>
         <div class="low-stock-warning" data-low-stock-warning="${trip.id}" hidden></div>
         ${minimumProgressMarkup(trip)}
@@ -923,7 +890,7 @@ function renderDetail(id) {
               <label>CPF<input name="cpf" type="text" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required /></label>
               <label>Telefone<input name="phone" type="tel" inputmode="tel" maxlength="16" placeholder="(88) 99999-9999" required /></label>
             </div>
-            <div class="booking-total-card"><span>💰 Valor total</span><strong data-config-total>${money(fareOptions[0]?.amount || 0)}</strong><small>O valor considera a opção e a quantidade escolhidas.</small></div>
+            <div class="booking-total-card"><div class="booking-total-heading"><span>${icon('money', 18)} Valor total</span><strong data-config-total>${money(fareOptions[0]?.amount || 0)}</strong></div><small>O valor considera a opção e a quantidade escolhidas.</small></div>
             <div class="payment-calculator"><h3>💳 Formas de pagamento</h3><div data-payment-calculator></div><label class="payment-choice">Como pretende pagar?<select name="payment" required><option value="pix">Pix</option><option value="cartao">Cartão</option></select></label></div>
             <p class="form-error booking-form-error" hidden></p>
             <a class="waitlist-cta" data-waitlist hidden href="${waLink(`Olá! Quero entrar na lista de espera do passeio ${trip.title} (${trip.date}). Podem me avisar se surgir vaga?`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Entrar na lista de espera</a>
@@ -937,11 +904,7 @@ function renderDetail(id) {
     <div class="booking-bar whatsapp-booking-bar"><div class="booking-inner"><div><small>Total</small><strong data-booking-total>${money(fareOptions[0]?.amount || 0)}</strong><span data-booking-people></span></div><button type="submit" form="trip-booking-config" id="whatsapp-reserve" data-trip="${trip.id}">${icon('ticket', 23)}<span>Reservar</span></button></div></div>`;
 
   app.querySelector('#share').addEventListener('click', () => shareTrip(trip));
-  app.querySelectorAll('[data-gallery]').forEach(button => {
-    button.addEventListener('click', () => {
-      app.querySelector('.detail-cover').src = galleryImages[Number(button.dataset.gallery)];
-    });
-  });
+  disposeDetailPhotos = initPhotoGallery(app.querySelector('.detail-hero'), galleryImages, trip.title);
 
   const form = app.querySelector('#trip-booking-config');
   const fareSelect = form.querySelector('[name="fare"]');
@@ -1114,12 +1077,7 @@ function openInfoScreen(type) {
         <section><p>Não aceitamos dinheiro em espécie nem pagamento no momento do embarque.</p></section>
       </div>
     </div>`;
-  } else {
-    screen.innerHTML = `<div class="info-screen-shell">
-      <div class="info-screen-head"><div><span>ATENDIMENTO</span><h2>🆘 Ajuda</h2></div><button type="button" data-info-close aria-label="Fechar">${icon('close', 25)}</button></div>
-      <div class="info-screen-body help-screen"><p>Precisa de ajuda com viagem, reserva, pagamento ou embarque?</p><a class="contact-button full-button" href="${waLink('Olá, Janu Turismo! Preciso de ajuda com uma viagem ou reserva.')}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 23)} Falar com a Janu</a></div>
-    </div>`;
-  }
+  } else { return; }
 
   const zoomButton = screen.querySelector('[data-feedback-zoom]');
   const imageButton = screen.querySelector('.feedback-panel-image');
@@ -1604,6 +1562,8 @@ async function loadAdmin() {
 }
 
 function render() {
+  disposeDetailPhotos();
+  disposeDetailPhotos = () => {};
   const route = decodeURIComponent(location.hash.replace(/^#\/?/, '')).split('/').filter(Boolean);
   if (route[0] === 'viagem' && route[1]) renderDetail(route[1]);
   else if (route[0] === 'reserva' && route[1]) renderConfirmation(route[1]);

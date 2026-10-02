@@ -57,3 +57,7 @@ O cadastro solicita apenas nome de acesso e senha. O nome deve ser único; difer
 `account-name.js` deriva um identificador interno estável do nome. A senha continua sendo administrada exclusivamente pelo Firebase Authentication; ela não é armazenada em documentos do Firestore. O campo interno `profiles.email` corresponde ao identificador do token para manter a compatibilidade com as regras existentes, e as telas exibem o nome de acesso.
 
 Contas criadas sem endereço de e-mail não oferecem recuperação automática por e-mail. O botão de recuperação informa essa limitação. A configuração pública em `firebase-config.js` corresponde ao aplicativo do site oficial; nenhuma chave administrativa está incluída.
+
+### Galeria de fotos das viagens
+
+`photo-gallery.js` usa as fotos cadastradas no catálogo de cada destino. Com mais de uma imagem, o carrossel alterna a cada cinco segundos e oferece controles, pausa e navegação por gesto. “Explorar fotos” abre a galeria em tela cheia, com miniaturas e navegação pelo teclado. Uma viagem com apenas uma imagem mantém a foto estática e permite ampliá-la. A preferência por movimento reduzido desativa a troca automática.
