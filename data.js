@@ -10,6 +10,21 @@ const db = app ? getFirestore(app) : null;
 export const authReady = auth ? new Promise(resolve => onAuthStateChanged(auth, resolve, resolve)) : Promise.resolve(null);
 export const currentUser = () => auth?.currentUser;
 
+const CACHE_TTL_MS = 60_000;
+let catalogCache = { value: null, expiresAt: 0 };
+const tripCache = new Map();
+
+function fresh(entry) {
+  return entry && entry.expiresAt > Date.now();
+}
+function invalidateCatalogCache() {
+  catalogCache = { value: null, expiresAt: 0 };
+}
+function invalidateTripCache(id = null) {
+  if (id) tripCache.delete(id);
+  else tripCache.clear();
+}
+
 const validTripId = id => /^[a-z0-9-]{3,45}$/.test(id || '');
 function requireSetup() { if (!configured) throw new Error('Firebase ainda não configurado. Abra o README da pasta do projeto.'); }
 function requireUser() { requireSetup(); if (!auth.currentUser) throw new Error('Entre na sua conta para continuar.'); return auth.currentUser; }
@@ -74,16 +89,30 @@ export async function logout() { if (auth) await signOut(auth); }
 
 export async function getCatalog() {
   requireSetup();
+  if (fresh(catalogCache)) return catalogCache.value.map(item => ({ ...item }));
   const snap = await getDocs(collection(db, 'trip_catalog'));
-  return snap.docs.map(item => ({ id: item.id, ...item.data() }));
+  const value = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+  catalogCache = { value, expiresAt: Date.now() + CACHE_TTL_MS };
+  return value.map(item => ({ ...item }));
 }
 export async function getTrips(ids = []) {
   requireSetup();
-  const snapshots = await Promise.all(ids.map(id => getDoc(doc(db, 'trip_inventory', id))));
-  return snapshots.map((snap, i) => {
-    const data = snap.exists() ? snap.data() : { capacity: 0, reserved: 0, enabled: false, demo: true };
-    return { id: ids[i], ...data, available: data.capacity - data.reserved };
-  });
+  const uniqueIds = [...new Set(ids)];
+  const missing = uniqueIds.filter(id => !fresh(tripCache.get(id)));
+
+  if (missing.length) {
+    const snapshots = await Promise.all(missing.map(id => getDoc(doc(db, 'trip_inventory', id))));
+    snapshots.forEach((snap, i) => {
+      const id = missing[i];
+      const data = snap.exists() ? snap.data() : { capacity: 0, reserved: 0, enabled: false, demo: true };
+      tripCache.set(id, {
+        value: { id, ...data, available: data.capacity - data.reserved },
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      });
+    });
+  }
+
+  return ids.map(id => ({ ...(tripCache.get(id)?.value || { id, capacity: 0, reserved: 0, enabled: false, demo: true, available: 0 }) }));
 }
 
 export async function createBooking(input) {
@@ -115,6 +144,7 @@ export async function createBooking(input) {
     if (error.code === 'permission-denied') throw new Error('Não foi possível reservar. Atualize a página e confira as vagas.');
     throw error;
   }
+  invalidateTripCache(input.tripId);
   return { booking };
 }
 
@@ -145,6 +175,7 @@ export async function adminSetCapacity({ tripId, capacity, enabled }) {
     if (snap.exists()) tx.update(ref, { capacity, demo: false, enabled: Boolean(enabled) });
     else tx.set(ref, { capacity, reserved: 0, demo: false, enabled: Boolean(enabled) });
   });
+  invalidateTripCache(tripId);
 }
 export async function adminSaveTrip(trip) {
   requireUser();
@@ -160,6 +191,7 @@ export async function adminSaveTrip(trip) {
       !Array.isArray(trip.images) || trip.images.length > 4 || trip.images.some(image => !image.startsWith('data:image/jpeg;base64,') || image.length > 160000)) throw new Error('Confira os dados e fotos da viagem.');
   const { id, ...fields } = trip;
   await setDoc(doc(db, 'trip_catalog', id), fields);
+  invalidateCatalogCache();
 }
 export async function adminManualBooking(input) {
   const admin = requireUser();
@@ -182,6 +214,7 @@ export async function adminManualBooking(input) {
     tx.set(doc(db, 'bookings', id), booking);
     tx.update(ref, { reserved: trip.data().reserved + seats });
   });
+  invalidateTripCache(input.tripId);
   return { booking, linked: Boolean(linkedUid) };
 }
 export async function adminSetStatus({ id, status }) {
@@ -201,4 +234,5 @@ export async function adminSetStatus({ id, status }) {
     }
     tx.update(bookingRef, { status });
   });
+  invalidateTripCache();
 }
