@@ -978,9 +978,9 @@ function renderPolicies() {
     <div class="policies-intro"><span class="section-kicker">INFORMAÇÕES IMPORTANTES</span><h1>Políticas da Janu Turismo</h1><p>Leia as condições de reserva, cancelamento e privacidade antes de concluir sua viagem.</p></div>
 
     <nav class="policies-nav" aria-label="Seções das políticas">
-      <a href="#policy-reservas">Reservas e pagamento</a>
-      <a href="#policy-cancelamento">Cancelamento</a>
-      <a href="#policy-privacidade">Privacidade</a>
+      <button type="button" data-policy-target="policy-reservas">Reservas e pagamento</button>
+      <button type="button" data-policy-target="policy-cancelamento">Cancelamento</button>
+      <button type="button" data-policy-target="policy-privacidade">Privacidade</button>
     </nav>
 
     <section class="policy-route-card" id="policy-reservas">
@@ -1037,6 +1037,11 @@ function renderPolicies() {
 
     ${siteFooter({ compact: true })}
   </main>${bottomNav('contact')}`;
+  app.querySelectorAll('[data-policy-target]').forEach(button => {
+    button.addEventListener('click', () => {
+      app.querySelector(`#${button.dataset.policyTarget}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
   document.title = 'Políticas | Janu Turismo';
 }
 
