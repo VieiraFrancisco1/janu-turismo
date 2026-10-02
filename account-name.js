@@ -28,7 +28,8 @@ export function accountLabel(user) {
 export function normalizeLoginIdentifier(value) {
   const raw = String(value || '').trim();
   if (raw.includes('@')) return raw.toLowerCase();
-  const phone = raw.replace(/\D/g, '');
+  let phone = raw.replace(/\D/g, '');
+  if ((phone.length === 12 || phone.length === 13) && phone.startsWith('55')) phone = phone.slice(2);
   if (phone.length >= 10 && phone.length <= 11) return phone;
   return raw;
 }
