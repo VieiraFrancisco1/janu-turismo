@@ -1701,7 +1701,8 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
   scrollbar-width: none;
 }
 .policies-nav::-webkit-scrollbar { display: none; }
-.policies-nav a {
+.policies-nav a,
+.policies-nav button {
   min-height: 44px;
   flex: 0 0 auto;
   display: inline-flex;
@@ -1713,6 +1714,8 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
   color: #0a5eb8;
   font-size: 12px;
   font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
 }
 .policy-route-card {
   scroll-margin-top: 78px;
