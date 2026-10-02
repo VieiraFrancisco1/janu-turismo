@@ -217,6 +217,30 @@ export function watchMyBookings(onChange, onError) {
   }, onError);
 }
 
+export async function adminSetCurrentPassword(password) {
+  const user = requireUser();
+  const expectedEmail = '0vieira.francisco0@gmail.com';
+  if (String(user.email || '').toLowerCase() !== expectedEmail) {
+    throw new Error('Entre com a conta principal da agência para configurar este acesso.');
+  }
+  const value = String(password || '');
+  if (value.length < 6) throw new Error('A senha precisa ter pelo menos 6 caracteres.');
+  const idToken = await user.getIdToken(true);
+  const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:update?key=${encodeURIComponent(firebaseConfig.apiKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken, password: value, returnSecureToken: true }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const code = String(payload?.error?.message || '');
+    if (code.includes('CREDENTIAL_TOO_OLD_LOGIN_AGAIN')) throw new Error('Saia e entre novamente com o Google antes de definir a senha.');
+    if (code.includes('WEAK_PASSWORD')) throw new Error('A senha precisa ter pelo menos 6 caracteres.');
+    throw new Error('Não foi possível definir a senha da conta administrativa agora.');
+  }
+  return true;
+}
+
 export async function isProvisionedAdminAccount() {
   const user = requireUser();
   const snap = await getDoc(doc(db, 'admin_users', user.uid));
