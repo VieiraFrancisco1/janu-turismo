@@ -63,6 +63,7 @@ service cloud.firestore {
         && after.updatedAt == request.time
         && ((before.status == 'pending' && after.status == 'confirmed' && after.seatsHeld == true
           && (held(before) || (get(path).data.demo == false && getAfter(path).data.reserved == get(path).data.reserved + before.seats)))
+        || (before.status == 'confirmed' && after.status == 'pending' && after.seatsHeld == true && held(before))
         || (after.status == 'cancelled' && after.seatsHeld == false
           && (!held(before) || getAfter(path).data.reserved == get(path).data.reserved - before.seats)));
     }
