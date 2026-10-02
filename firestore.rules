@@ -2,7 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function signed() { return request.auth != null; }
-    function agency() { return signed() && request.auth.uid == 'Lnixa19EPhSLUgROkc0Of95SYo53'; }
+    function primaryAgency() { return signed() && request.auth.uid == 'Lnixa19EPhSLUgROkc0Of95SYo53'; }
+    function agency() { return signed() && (primaryAgency() || exists(/databases/$(database)/documents/admin_users/$(request.auth.uid))); }
     function tripPath(id) { return /databases/$(database)/documents/trip_inventory/$(id); }
     function bookingPath(id) { return /databases/$(database)/documents/bookings/$(id); }
     function catalogPath(id) { return /databases/$(database)/documents/trip_catalog/$(id); }
@@ -66,6 +67,17 @@ service cloud.firestore {
         || (before.status == 'confirmed' && after.status == 'pending' && after.seatsHeld == true && held(before))
         || (after.status == 'cancelled' && after.seatsHeld == false
           && (!held(before) || getAfter(path).data.reserved == get(path).data.reserved - before.seats)));
+    }
+    match /admin_users/{userId} {
+      allow get, list: if agency();
+      allow create: if primaryAgency()
+        && request.resource.data.keys().hasOnly(['phone', 'name', 'createdBy', 'createdAt'])
+        && request.resource.data.phone is string
+        && request.resource.data.phone.matches('^[0-9]{10,11}$')
+        && request.resource.data.name == 'Janu Turismo'
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
     }
     match /profiles/{userId} {
       allow get: if agency() || (signed() && request.auth.uid == userId);
