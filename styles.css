@@ -556,3 +556,5 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
     width: 118px;
   }
 }
+
+/* deploy trigger: vercel git integration */
