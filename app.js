@@ -1,6 +1,6 @@
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
 import { DEPOIMENTOS } from './depoimentos.js';
-import { configured, authReady, currentUser, login, logout, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
+import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
 const AGENCY_INFO = {
@@ -179,9 +179,26 @@ async function refreshInventory() {
 }
 
 function authPanel(title = 'Entre para continuar') {
-  return `<div class="auth-panel" data-auth-mode="login"><div class="auth-tabs" aria-label="Acesso à conta"><button class="auth-tab is-active" type="button" data-auth-tab="login" aria-pressed="true">Entrar</button><button class="auth-tab" type="button" data-auth-tab="register" aria-pressed="false">Criar conta</button></div><h2 class="auth-heading">${escapeHtml(title)}</h2><p class="auth-description">Entre para acompanhar suas reservas em qualquer aparelho.</p><form class="auth-form"><label class="register-name" hidden>Nome<input name="name" autocomplete="name" maxlength="80" placeholder="Seu nome" disabled /></label><label>E-mail<input type="email" name="email" autocomplete="email" placeholder="seu@email.com" required /></label><label>Senha<input type="password" name="password" autocomplete="current-password" minlength="6" placeholder="Sua senha" required /></label><p class="form-error" role="alert" hidden></p><button class="auth-submit" type="submit">Entrar</button></form><button class="auth-switch" type="button">Ainda não tem conta? <strong>Criar conta</strong></button></div>`;
+  return `<div class="auth-panel" data-auth-mode="login">
+    <div class="auth-tabs" aria-label="Acesso à conta">
+      <button class="auth-tab is-active" type="button" data-auth-tab="login" aria-pressed="true">Entrar</button>
+      <button class="auth-tab" type="button" data-auth-tab="register" aria-pressed="false">Criar conta</button>
+    </div>
+    <h2 class="auth-heading">${escapeHtml(title)}</h2>
+    <p class="auth-description">Entre para acompanhar suas reservas em qualquer aparelho.</p>
+    <form class="auth-form">
+      <label class="register-name" hidden>Nome<input name="name" autocomplete="name" maxlength="80" placeholder="Seu nome" disabled /></label>
+      <label>E-mail<input type="email" name="email" autocomplete="email" placeholder="seu@email.com" required /></label>
+      <label>Senha<input type="password" name="password" autocomplete="current-password" minlength="6" placeholder="Sua senha" required /></label>
+      <button class="forgot-password" type="button" data-login-only>Esqueci minha senha</button>
+      <p class="form-error" role="alert" hidden></p>
+      <button class="auth-submit" type="submit">Entrar</button>
+    </form>
+    <div class="auth-or" data-login-only><span>ou</span></div>
+    <button class="google-login" type="button" data-login-only><span class="google-mark" aria-hidden="true">G</span> Entrar com Google</button>
+    <button class="auth-switch" type="button">Ainda não tem conta? <strong>Criar conta</strong></button>
+  </div>`;
 }
-
 function bindAuth(container, onSuccess) {
   const panel = container.querySelector('.auth-panel');
   const form = container.querySelector('.auth-form');
@@ -190,7 +207,10 @@ function bindAuth(container, onSuccess) {
   const password = form.querySelector('[name="password"]');
   const error = form.querySelector('.form-error');
   const switchButton = panel.querySelector('.auth-switch');
+  const resetButton = panel.querySelector('.forgot-password');
+  const googleButton = panel.querySelector('.google-login');
   const title = panel.querySelector('.auth-heading').textContent;
+
   function setMode(mode) {
     const register = mode === 'register';
     panel.dataset.authMode = mode;
@@ -206,14 +226,53 @@ function bindAuth(container, onSuccess) {
       : 'Entre para acompanhar suas reservas em qualquer aparelho.';
     form.querySelector('.auth-submit').textContent = register ? 'Criar conta' : 'Entrar';
     switchButton.innerHTML = register ? 'Já tem conta? <strong>Entrar</strong>' : 'Ainda não tem conta? <strong>Criar conta</strong>';
+    panel.querySelectorAll('[data-login-only]').forEach(element => { element.hidden = register; });
     panel.querySelectorAll('[data-auth-tab]').forEach(button => {
       const active = button.dataset.authTab === mode;
       button.classList.toggle('is-active', active);
       button.setAttribute('aria-pressed', String(active));
     });
   }
+
   panel.querySelectorAll('[data-auth-tab]').forEach(button => button.addEventListener('click', () => setMode(button.dataset.authTab)));
   switchButton.addEventListener('click', () => setMode(panel.dataset.authMode === 'login' ? 'register' : 'login'));
+
+  resetButton?.addEventListener('click', async () => {
+    const email = String(form.elements.email.value || '').trim();
+    error.hidden = true;
+    if (!email) {
+      error.textContent = 'Digite seu e-mail acima para recuperar a senha.';
+      error.hidden = false;
+      form.elements.email.focus();
+      return;
+    }
+    resetButton.disabled = true;
+    try {
+      await resetPassword(email);
+      showToast('Enviamos o link de recuperação para seu e-mail.');
+    } catch (problem) {
+      error.textContent = problem.message;
+      error.hidden = false;
+    } finally {
+      resetButton.disabled = false;
+    }
+  });
+
+  googleButton?.addEventListener('click', async () => {
+    error.hidden = true;
+    const buttons = panel.querySelectorAll('button');
+    buttons.forEach(button => button.disabled = true);
+    try {
+      await loginWithGoogle();
+      onSuccess();
+    } catch (problem) {
+      error.textContent = problem.message;
+      error.hidden = false;
+    } finally {
+      buttons.forEach(button => button.disabled = false);
+    }
+  });
+
   form.addEventListener('submit', async event => {
     event.preventDefault();
     const register = panel.dataset.authMode === 'register';
@@ -231,7 +290,6 @@ function bindAuth(container, onSuccess) {
     } finally { buttons.forEach(button => button.disabled = false); }
   });
 }
-
 function tripName(id) { return TRIPS.find(trip => trip.id === id)?.title || 'Viagem'; }
 function fares(trip) {
   return Array.isArray(trip.fareOptions) && trip.fareOptions.length ? trip.fareOptions : [
