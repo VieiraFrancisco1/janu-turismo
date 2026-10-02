@@ -12,8 +12,12 @@ let TRIPS = PASSEIOS_SEED.map(adaptarPasseioParaApp);
 const app = document.querySelector('#app');
 const starterTrips = TRIPS.map(trip => ({ ...trip, published: trip.published !== false }));
 TRIPS = starterTrips.map(normalizeTrip);
-let filter = 'Todas';
+let filter = 'Todos';
 let query = '';
+let boardingCity = (() => {
+  try { return localStorage.getItem('janu-boarding-city') || ''; }
+  catch { return ''; }
+})();
 
 const paths = {
   arrowLeft: '<path d="m15 18-6-6 6-6"/>',
@@ -44,7 +48,12 @@ function icon(name, size = 24) {
 }
 
 function money(value) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function waLink(message) {
@@ -56,10 +65,19 @@ function escapeHtml(value) {
 }
 
 function seatsText(id) {
+  const trip = TRIPS.find(item => item.id === id);
+  if (trip && isTripPast(trip)) return 'Encerrado';
+  if (trip?.status === 'data-a-confirmar') return 'Data a confirmar';
+  if (trip?.status === 'esgotado') return 'Esgotado';
+
   const state = inventory[id];
-  if (!inventoryReady || !state || state.demo) return 'Vagas a confirmar';
+  if (!inventoryReady || !state || state.demo) {
+    return trip?.status === 'vagas-limitadas' ? 'Últimas vagas' : 'Vagas a confirmar';
+  }
   if (!state.enabled) return 'Reservas em preparação';
-  return state.available > 0 ? `${state.available} ${state.available === 1 ? 'vaga disponível' : 'vagas disponíveis'}` : 'Vagas esgotadas';
+  if (state.available <= 0) return 'Esgotado';
+  if (state.available <= 5 || trip?.status === 'vagas-limitadas') return `Últimas ${state.available} vagas`;
+  return `Restam ${state.available} vagas`;
 }
 
 async function refreshInventory() {
@@ -182,24 +200,182 @@ function bottomNav(active) {
   return `<nav class="bottom-nav" aria-label="Navegação principal"><div class="bottom-nav-inner">${items.map(([glyph, label, url, key]) => `<a href="${url}" class="nav-item ${active === key ? 'active' : ''}" ${active === key ? 'aria-current="page"' : ''}>${icon(glyph, 26)}<span>${label}</span></a>`).join('')}</div></nav>`;
 }
 
+const FILTER_OPTIONS = ['Todos', 'Bate e volta', 'Fim de semana', 'Parques', 'Praia', 'Serra'];
+
+function saveBoardingCity(value) {
+  boardingCity = value;
+  try {
+    if (value) localStorage.setItem('janu-boarding-city', value);
+    else localStorage.removeItem('janu-boarding-city');
+  } catch { /* persistência indisponível neste navegador */ }
+}
+
+function isTripPast(trip) {
+  if (trip.status === 'encerrado') return true;
+  const iso = trip.dataFim || trip.dataInicio;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(iso || ''))) return false;
+  return iso < todayIso();
+}
+
+function upcomingTrips() {
+  return TRIPS
+    .filter(trip => trip.published && !isTripPast(trip))
+    .sort((a, b) => {
+      const dateA = /^\d{4}-\d{2}-\d{2}$/.test(String(a.dataInicio || '')) ? a.dataInicio : '9999-12-31';
+      const dateB = /^\d{4}-\d{2}-\d{2}$/.test(String(b.dataInicio || '')) ? b.dataInicio : '9999-12-31';
+      return dateA.localeCompare(dateB);
+    });
+}
+
+function tripMatchesFilter(trip, selected = filter) {
+  if (selected === 'Todos') return true;
+  const category = `${trip.categoria || ''} ${trip.category || ''}`.toLowerCase();
+  const kind = `${trip.kind || ''} ${trip.duracao || ''}`.toLowerCase();
+  if (selected === 'Bate e volta') return kind.includes('bate e volta');
+  if (selected === 'Fim de semana') {
+    return Boolean(trip.hospedagem) || kind.includes('hospedagem') ||
+      (trip.dataInicio && trip.dataFim && trip.dataInicio !== trip.dataFim);
+  }
+  if (selected === 'Parques') return category.includes('parque');
+  if (selected === 'Praia') return category.includes('praia');
+  if (selected === 'Serra') return category.includes('serra');
+  return true;
+}
+
+function tripMatchesBoarding(trip) {
+  return !boardingCity || (trip.boarding || []).some(city => city === boardingCity);
+}
+
+function availableBoardingCities() {
+  return [...new Set(upcomingTrips().flatMap(trip => trip.boarding || []).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function boardingSelector() {
+  const cities = availableBoardingCities();
+  if (boardingCity && !cities.includes(boardingCity)) saveBoardingCity('');
+  return `<label class="boarding-filter"><span>${icon('pin', 18)} Cidade de embarque</span><select data-boarding-filter aria-label="Filtrar por cidade de embarque"><option value="">Todas as cidades</option>${cities.map(city => `<option value="${escapeHtml(city)}" ${city === boardingCity ? 'selected' : ''}>${escapeHtml(city)}</option>`).join('')}</select></label>`;
+}
+
+function filterChips() {
+  return `<div class="filters discovery-filters" role="group" aria-label="Filtrar viagens">${FILTER_OPTIONS.map(name => `<button type="button" data-filter="${escapeHtml(name)}" class="${name === filter ? 'selected' : ''}" aria-pressed="${name === filter}">${escapeHtml(name)}</button>`).join('')}</div>`;
+}
+
+function boardingSummary(trip) {
+  const places = trip.boarding || [];
+  if (!places.length) return 'Embarque a confirmar';
+  if (places.length <= 2) return places.join(' · ');
+  return `${places.slice(0, 2).join(' · ')} +${places.length - 2}`;
+}
+
+function cardIncludedItems(trip) {
+  const labels = new Map([
+    ['bus', 'Transporte'],
+    ['bed', 'Hospedagem'],
+    ['coffee', 'Refeições'],
+    ['meal', 'Refeições'],
+  ]);
+  const found = [];
+  for (const [glyph] of trip.includes || []) {
+    const label = labels.get(glyph);
+    if (!label || found.some(item => item.label === label)) continue;
+    found.push({ glyph: glyph === 'coffee' ? 'meal' : glyph, label });
+  }
+  return found.slice(0, 3);
+}
+
 function tripCard(trip, { special = false } = {}) {
-  return `<article class="trip-card ${special ? 'trip-card-special' : ''}">
-    <a class="trip-photo-link" href="#/viagem/${encodeURIComponent(trip.id)}" aria-label="Ver ${escapeHtml(trip.title)}"><img src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" loading="lazy" />${special ? '<span class="special-ribbon">Especial</span>' : ''}<span class="photo-chip">${escapeHtml(trip.category)}</span></a>
+  const included = cardIncludedItems(trip);
+  return `<a class="trip-card ${special ? 'trip-card-special' : ''}" href="#/viagem/${encodeURIComponent(trip.id)}" aria-label="Ver detalhes de ${escapeHtml(trip.title)}">
+    <div class="trip-photo-link"><img src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" loading="lazy" decoding="async" />${special ? '<span class="special-ribbon">Especial</span>' : ''}<span class="photo-chip">${escapeHtml(trip.category)}</span></div>
     <div class="trip-card-body">
-      <div class="trip-card-top"><span>${escapeHtml(trip.kind)}</span><span aria-hidden="true">${icon('arrowUpRight', 17)}</span></div>
-      <h3><a href="#/viagem/${encodeURIComponent(trip.id)}">${escapeHtml(trip.title)}</a></h3>
+      <div class="trip-card-top"><span class="trip-kind">${escapeHtml(trip.kind)}</span><span class="trip-status" data-seats="${trip.id}">${seatsText(trip.id)}</span></div>
+      <h3>${escapeHtml(trip.title)}</h3>
       ${trip.subtitle ? `<p class="trip-subtitle">${escapeHtml(trip.subtitle)}</p>` : ''}
-      <p class="trip-date">${icon('calendar', 17)}<span>${escapeHtml(trip.date)}</span></p>
-      <p class="seats-line" data-seats="${trip.id}">${seatsText(trip.id)}</p>
-      <div class="trip-card-footer"><p class="trip-price"><small>A partir de</small><strong>${money(trip.price)}</strong></p><a class="trip-details-link" href="#/viagem/${encodeURIComponent(trip.id)}" aria-label="Ver detalhes de ${escapeHtml(trip.title)}">${icon('arrowRight', 20)}</a></div>
+      <p class="trip-date">${icon('calendar', 17)}<span>${escapeHtml(trip.date)}${trip.duracao ? ` · ${escapeHtml(trip.duracao)}` : ''}</span></p>
+      <p class="trip-boarding">${icon('pin', 16)}<span>${escapeHtml(boardingSummary(trip))}</span></p>
+      ${included.length ? `<div class="trip-included" aria-label="Principais itens inclusos">${included.map(item => `<span title="${escapeHtml(item.label)}">${icon(item.glyph, 16)} ${escapeHtml(item.label)}</span>`).join('')}</div>` : ''}
+      <div class="trip-card-footer"><p class="trip-price"><small>A partir de</small><strong>${money(trip.price)}</strong><em>por pessoa</em></p></div>
     </div>
-  </article>`;
+  </a>`;
+}
+
+function heroMarkup(trips) {
+  if (!trips.length) {
+    return `<section class="hero" aria-label="Conheça as viagens da Janu Turismo">
+      <img src="./assets/lagoa-do-paraiso.webp" alt="Águas azuis e paisagem de praia" fetchpriority="high" />
+      <div class="hero-shade"></div>
+      <div class="hero-copy"><span class="hero-eyebrow">Janu Turismo <i></i> Ceará</span><h1>Viajar é viver <em>mais histórias.</em></h1><p>Descubra passeios para sair da rotina e aproveitar cada momento.</p><a class="hero-cta" href="#/viagens">Explorar viagens ${icon('arrowRight', 18)}</a></div>
+    </section>`;
+  }
+  const slides = trips.slice(0, 3);
+  return `<section class="hero hero-carousel" aria-label="Viagens em destaque">
+    <h1 class="sr-only">Janu Turismo — próximas viagens</h1>
+    <div class="hero-track">${slides.map((trip, index) => `<article class="hero-slide" aria-hidden="${index !== 0}">
+      <img src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" ${index === 0 ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'} />
+      <div class="hero-shade"></div>
+      <div class="hero-copy"><span class="hero-eyebrow">${escapeHtml(trip.category)} <i></i> ${escapeHtml(trip.date)}</span><h2>${escapeHtml(trip.title)}${trip.subtitle ? ` <em>${escapeHtml(trip.subtitle)}</em>` : ''}</h2><p>${escapeHtml(trip.kind)}${trip.duracao ? ` · ${escapeHtml(trip.duracao)}` : ''}</p><a class="hero-cta" href="#/viagem/${encodeURIComponent(trip.id)}">Ver viagem ${icon('arrowRight', 18)}</a></div>
+    </article>`).join('')}</div>
+    <div class="hero-dots" aria-label="Escolher destaque">${slides.map((trip, index) => `<button type="button" data-hero-dot="${index}" class="${index === 0 ? 'active' : ''}" aria-label="Mostrar ${escapeHtml(trip.title)}" aria-pressed="${index === 0}"></button>`).join('')}</div>
+    <span class="hero-index">01 / ${String(slides.length).padStart(2, '0')}</span>
+  </section>`;
+}
+
+function bindHero() {
+  const hero = app.querySelector('.hero-carousel');
+  if (!hero) return;
+  const track = hero.querySelector('.hero-track');
+  const slides = [...hero.querySelectorAll('.hero-slide')];
+  const dots = [...hero.querySelectorAll('[data-hero-dot]')];
+  const index = hero.querySelector('.hero-index');
+  let current = 0;
+  let touchStart = null;
+
+  const show = next => {
+    current = (next + slides.length) % slides.length;
+    track.style.transform = `translateX(-${current * 100}%)`;
+    slides.forEach((slide, i) => slide.setAttribute('aria-hidden', String(i !== current)));
+    dots.forEach((dot, i) => {
+      dot.classList.toggle('active', i === current);
+      dot.setAttribute('aria-pressed', String(i === current));
+    });
+    index.textContent = `${String(current + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+  };
+
+  dots.forEach(dot => dot.addEventListener('click', () => show(Number(dot.dataset.heroDot))));
+  hero.addEventListener('touchstart', event => { touchStart = event.changedTouches[0]?.clientX ?? null; }, { passive: true });
+  hero.addEventListener('touchend', event => {
+    if (touchStart === null) return;
+    const end = event.changedTouches[0]?.clientX ?? touchStart;
+    const delta = end - touchStart;
+    if (Math.abs(delta) >= 45) show(current + (delta < 0 ? 1 : -1));
+    touchStart = null;
+  }, { passive: true });
+}
+
+function visibleHomeTrips() {
+  return upcomingTrips().filter(trip => tripMatchesFilter(trip) && tripMatchesBoarding(trip));
+}
+
+function bindDiscoveryControls({ home = false } = {}) {
+  app.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => {
+    filter = button.dataset.filter;
+    if (home) renderHome();
+    else updateList();
+  }));
+  const selector = app.querySelector('[data-boarding-filter]');
+  if (selector) selector.addEventListener('change', event => {
+    saveBoardingCity(event.target.value);
+    if (home) renderHome();
+    else updateList();
+  });
 }
 
 function renderHome() {
-  const publishedTrips = TRIPS.filter(trip => trip.published);
-  const specialTrips = publishedTrips.filter(isSpecialActive);
-  const regularTrips = publishedTrips.filter(trip => !isSpecialActive(trip));
+  const publishedTrips = upcomingTrips();
+  const shownTrips = visibleHomeTrips();
+  const specialTrips = shownTrips.filter(isSpecialActive);
+  const regularTrips = shownTrips.filter(trip => !isSpecialActive(trip));
   const specialSection = specialTrips.length ? `<section class="special-events" aria-labelledby="special-title">
       <div class="special-heading"><div><span class="special-kicker">EVENTO ESPECIAL</span><h2 id="special-title">Viagens em destaque</h2><p>Experiências especiais por tempo limitado.</p></div></div>
       <div class="trip-grid special-trip-grid">${specialTrips.map(trip => tripCard(trip, { special: true })).join('')}</div>
@@ -207,28 +383,28 @@ function renderHome() {
   const upcomingSection = regularTrips.length ? `<section class="featured" aria-labelledby="featured-title">
       <div class="section-heading"><div><span class="section-kicker">DESTINOS PARA VOCÊ</span><h2 id="featured-title">Próximas viagens</h2></div><a href="#/viagens">Ver todas ${icon('arrowRight', 18)}</a></div>
       <div class="trip-grid home-trip-grid">${regularTrips.map(trip => tripCard(trip)).join('')}</div>
-    </section>` : '';
+    </section>` : `<section class="featured"><div class="empty-state"><h2>Nenhuma viagem encontrada</h2><p>Troque a cidade de embarque ou o tipo de passeio para ver outras opções.</p></div></section>`;
+
   app.innerHTML = `${header()}<main class="wrap page home-page" id="main">
-    <section class="hero" aria-label="Conheça as viagens da Janu Turismo">
-      <img src="./assets/lagoa-do-paraiso.webp" alt="Águas azuis e paisagem de praia" fetchpriority="high" />
-      <div class="hero-shade"></div>
-      <div class="hero-copy"><span class="hero-eyebrow">Janu Turismo <i></i> Ceará</span><h1>Viajar é viver <em>mais histórias.</em></h1><p>Descubra passeios para sair da rotina e aproveitar cada momento.</p><a class="hero-cta" href="#/viagens">Explorar viagens ${icon('arrowRight', 18)}</a></div>
-      <span class="hero-index">01 / 03</span>
+    ${heroMarkup(publishedTrips.filter(trip => trip.image))}
+    <section class="discovery-panel" aria-label="Encontrar uma viagem">
+      ${boardingSelector()}
+      ${filterChips()}
     </section>
     ${specialSection}
     ${upcomingSection}
   </main>${bottomNav('home')}`;
   document.title = 'Janu Turismo | Próximas viagens';
+  bindHero();
+  bindDiscoveryControls({ home: true });
   refreshInventory();
 }
 
 function filteredTrips() {
   const normalized = query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-  return TRIPS.filter(trip => {
-    if (!trip.published) return false;
-    const categoryMatches = filter === 'Todas' || trip.category === filter;
-    const text = `${trip.title} ${trip.subtitle} ${trip.category}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    return categoryMatches && text.includes(normalized);
+  return upcomingTrips().filter(trip => {
+    const text = `${trip.title} ${trip.subtitle} ${trip.category} ${trip.kind}`.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    return tripMatchesFilter(trip) && tripMatchesBoarding(trip) && text.includes(normalized);
   });
 }
 
@@ -236,26 +412,25 @@ function updateList() {
   const grid = app.querySelector('#all-trips');
   if (!grid) return;
   const found = filteredTrips();
-  grid.innerHTML = found.length ? found.map(tripCard).join('') : `<div class="empty-state"><h2>Nenhuma viagem encontrada</h2><p>Tente buscar outro destino ou escolha “Todas”.</p></div>`;
+  grid.innerHTML = found.length ? found.map(tripCard).join('') : `<div class="empty-state"><h2>Nenhuma viagem encontrada</h2><p>Tente outra busca, cidade de embarque ou tipo de passeio.</p></div>`;
   app.querySelectorAll('[data-filter]').forEach(button => {
     button.classList.toggle('selected', button.dataset.filter === filter);
     button.setAttribute('aria-pressed', String(button.dataset.filter === filter));
   });
+  const selector = app.querySelector('[data-boarding-filter]');
+  if (selector) selector.value = boardingCity;
 }
 
 function renderTrips() {
   app.innerHTML = `${header()}<main class="wrap page trips-page" id="main">
     <div class="list-intro"><h1>Viagens</h1><p>Escolha seu próximo destino</p></div>
     <label class="search-box">${icon('search', 23)}<span class="sr-only">Buscar destino</span><input id="search" type="search" autocomplete="off" placeholder="Buscar destino" aria-label="Buscar destino" /></label>
-    <div class="filters" role="group" aria-label="Filtrar viagens">${['Todas', ...new Set(TRIPS.filter(t => t.published).map(t => t.category))].map(name => `<button type="button" data-filter="${escapeHtml(name)}">${escapeHtml(name)}</button>`).join('')}</div>
+    <div class="trips-discovery">${boardingSelector()}${filterChips()}</div>
     <div id="all-trips" class="trip-grid" aria-live="polite"></div>
   </main>${bottomNav('trips')}`;
   app.querySelector('#search').value = query;
   app.querySelector('#search').addEventListener('input', event => { query = event.target.value; updateList(); });
-  app.querySelector('.filters').addEventListener('click', event => {
-    const button = event.target.closest('[data-filter]');
-    if (button) { filter = button.dataset.filter; updateList(); }
-  });
+  bindDiscoveryControls();
   updateList();
   document.title = 'Viagens | Janu Turismo';
   refreshInventory();
