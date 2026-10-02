@@ -354,7 +354,7 @@ export function adaptarPasseioParaApp(passeio) {
     price: menorPrecoPorPessoa(opcoes),
     priceNote: primeiroPreco.nome,
     category: categoriaLegada(passeio.categoria),
-    image: passeio.imagens?.[0] || './assets/logo-janu.png',
+    image: passeio.imagens?.[0] || './assets/logo-janu.webp',
     imageAlt: passeio.titulo,
     kind: tipoLegado(passeio),
     blurb: passeio.observacoes || passeio.subtitulo || '',
