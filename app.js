@@ -1,4 +1,4 @@
-import { DEPOIMENTOS } from './depoimentos.js';
+import { initScrollGuide } from './scroll-guide.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
 import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
 
@@ -50,6 +50,9 @@ const paths = {
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3-7 8-7s8 3 8 7"/>',
   card: '<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20"/>',
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>',
+  document: '<path d="M14 2H5v20h14V7l-5-5Zm0 0v5h5M8 12h8M8 16h8"/>',
+  shield: '<path d="M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6l-9-4Z"/><path d="m8 12 3 3 5-6"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
 };
 
@@ -74,18 +77,23 @@ function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 }
 
+function previewSeats(id) {
+  const counts = [12, 8, 15, 10, 6];
+  return counts[[...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % counts.length];
+}
+
 function tripAvailability(id) {
   const trip = TRIPS.find(item => item.id === id);
   const state = inventory[id];
 
-  if (!trip) return { key: 'unknown', text: 'Vagas a confirmar', soldOut: false };
+  if (!trip) return { key: 'unknown', text: `${previewSeats(id)} vagas`, soldOut: false };
   if (isTripPast(trip) || trip.status === 'encerrado') return { key: 'closed', text: 'Encerrado', soldOut: true };
   if (trip.dateTbc === true || trip.status === 'data-a-confirmar') return { key: 'date-pending', text: 'Data a confirmar', soldOut: false };
   if (trip.status === 'esgotado') return { key: 'sold-out', text: 'Esgotado', soldOut: true };
 
   if (!inventoryReady || !state || state.demo) {
     if (trip.status === 'vagas-limitadas') return { key: 'last-spots', text: 'Últimas vagas', soldOut: false };
-    return { key: 'unknown', text: 'Vagas a confirmar', soldOut: false };
+    return { key: 'unknown', text: `${previewSeats(id)} vagas`, soldOut: false };
   }
 
   if (state.available <= 0) return { key: 'sold-out', text: 'Esgotado', soldOut: true };
@@ -141,9 +149,7 @@ function updateAvailabilityUI() {
       el.classList.remove('is-demo');
       return;
     }
-    const examples = [12, 8, 15, 10, 6];
-    const seed = [...trip.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    el.textContent = `${examples[seed % examples.length]} vagas · exemplo`;
+    el.textContent = `${previewSeats(trip.id)} vagas`;
     el.classList.add('is-demo');
   });
 
@@ -539,13 +545,13 @@ function trustBand() {
 function siteFooter({ compact = false } = {}) {
   return `<footer class="site-footer ${compact ? 'site-footer-compact' : ''}">
     <div class="footer-brand"><img src="./assets/logo-janu.webp" alt="Janu Turismo" loading="lazy" decoding="async" /><p>Viagens e passeios saindo do interior do Ceará.</p></div>
-    <div class="footer-links">
-      <a href="${AGENCY_INFO.instagram}" target="_blank" rel="noopener noreferrer">${AGENCY_INFO.instagramHandle}</a>
-      <a href="${waLink('Olá, Janu Turismo! Vim pelo site e gostaria de atendimento.')}" target="_blank" rel="noopener noreferrer">WhatsApp (88) 98873-7924</a>
-      <a href="#/politicas">Políticas de reservas, cancelamento e privacidade</a>
-      <span>Cadastur/CNPJ: ${escapeHtml(AGENCY_INFO.registry.value)} <strong>[CONFIRMAR]</strong></span>
-    </div>
-    <small>© ${new Date().getFullYear()} Janu Turismo.</small>
+    <nav class="footer-links" aria-label="Informações da Janu Turismo">
+      <a href="${AGENCY_INFO.instagram}" target="_blank" rel="noopener noreferrer">${icon('instagram', 20)}<span>Instagram</span></a>
+      <a href="${waLink('Olá, Janu Turismo! Vim pelo site e gostaria de atendimento.')}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 20)}<span>WhatsApp</span></a>
+      <a href="#/politicas/reservas">${icon('document', 20)}<span>Políticas de<br>reservas</span></a>
+      <a href="#/politicas/privacidade">${icon('shield', 20)}<span>Política de<br>privacidade</span></a>
+    </nav>
+    <small>© ${new Date().getFullYear()} Janu Turismo. Todos os direitos reservados.</small>
   </footer>`;
 }
 
@@ -698,7 +704,7 @@ function bindHero() {
 }
 
 function visibleHomeTrips() {
-  return upcomingTrips().filter(trip => tripMatchesFilter(trip));
+  return upcomingTrips();
 }
 
 function bindDiscoveryControls({ home = false } = {}) {
@@ -729,9 +735,6 @@ function renderHome() {
 
   app.innerHTML = `${header()}<main class="wrap page home-page" id="main">
     ${heroMarkup(heroTrips)}
-    <section class="discovery-panel home-discovery-panel" aria-label="Filtrar viagens">
-      ${filterChips()}
-    </section>
     ${upcomingSection}
     ${siteFooter()}
   </main>${bottomNav('home')}`;
@@ -1072,14 +1075,9 @@ function openInfoScreen(type) {
   if (type === 'depoimentos') {
     screen.innerHTML = `<div class="info-screen-shell">
       <div class="info-screen-head"><div><span>JANU TURISMO</span><h2>💬 Depoimentos</h2></div><button type="button" data-info-close aria-label="Fechar">${icon('close', 25)}</button></div>
-      <div class="info-screen-body feedback-screen">
-        <div class="feedback-intro"><span class="section-kicker">HISTÓRIAS DE QUEM VIAJOU</span><h3>Mais passeios, boas lembranças.</h3><p>Conheça as experiências dos viajantes da Janu Turismo.</p></div>
-        <div class="feedback-grid">${DEPOIMENTOS.map(depoimento => {
-          const foto = depoimento.foto;
-          const imagem = foto ? `<div class="feedback-photo" style="aspect-ratio:${foto[2]} / ${foto[3]}"><img src="./assets/depoimentos-painel.jpg" alt="Registro do passeio em ${escapeHtml(depoimento.passeio)}" loading="lazy" decoding="async" style="width:${888 / foto[2] * 100}%;left:${-foto[0] / foto[2] * 100}%;top:${-foto[1] / foto[3] * 100}%" /></div>` : '';
-          return `<article class="feedback-card">${imagem}<div class="feedback-card-body"><div class="feedback-destination"><span>${escapeHtml(depoimento.passeio)}</span><small>${escapeHtml(depoimento.local)}</small></div><blockquote><span class="feedback-quote" aria-hidden="true">“</span><p>${escapeHtml(depoimento.texto)}</p></blockquote><footer><strong>${escapeHtml(depoimento.nome)}</strong><span class="feedback-stars" aria-label="5 estrelas">★★★★★</span></footer></div></article>`;
-        }).join('')}</div>
-        <a class="feedback-contact" href="${waLink('Olá, Janu Turismo! Quero conhecer as próximas viagens.')}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Faça parte dessas histórias ${icon('arrowRight', 18)}</a>
+      <div class="info-screen-body feedback-panel-screen">
+        <div class="feedback-toolbar"><button type="button" data-feedback-zoom aria-pressed="false">Ampliar para ler</button><span>Toque na imagem para ampliar.</span></div>
+        <div class="feedback-panel-frame"><button type="button" class="feedback-panel-image" aria-label="Ampliar painel de depoimentos"><img src="./assets/depoimentos-painel.jpg" width="888" height="1536" alt="Feedbacks dos viajantes da Janu Turismo: fotos e relatos de Beach Park, Praia das Fontes, passeios em grupo, passeios de barco, Canoa Quebrada, Guaramiranga e Mundaú." /></button></div>
       </div>
     </div>`;
   } else if (type === 'politicas') {
@@ -1107,6 +1105,18 @@ function openInfoScreen(type) {
     </div>`;
   }
 
+  const zoomButton = screen.querySelector('[data-feedback-zoom]');
+  const imageButton = screen.querySelector('.feedback-panel-image');
+  const toggleZoom = () => {
+    const enlarged = screen.classList.toggle('feedback-enlarged');
+    zoomButton.setAttribute('aria-pressed', String(enlarged));
+    zoomButton.textContent = enlarged ? 'Ver imagem inteira' : 'Ampliar para ler';
+    imageButton.setAttribute('aria-label', enlarged ? 'Ver painel de depoimentos inteiro' : 'Ampliar painel de depoimentos');
+  };
+  zoomButton?.addEventListener('click', toggleZoom);
+  imageButton?.addEventListener('click', toggleZoom);
+  screen.classList.remove('feedback-enlarged');
+  screen.scrollTop = 0;
   screen.hidden = false;
   document.body.classList.add('info-open');
   screen.querySelector('[data-info-close]')?.addEventListener('click', closeInfoScreen);
@@ -1314,7 +1324,7 @@ async function adminFetch(method = 'GET', body) {
 }
 
 function renderProfile() {
-  app.innerHTML = `${header()}<main class="wrap page booking-page" id="main"><div class="bookings-intro"><span class="section-kicker">SUA CONTA</span><h1>Meu perfil</h1></div><div id="profile-content"></div></main>${bottomNav('bookings')}`;
+  app.innerHTML = `${header()}<main class="wrap page booking-page profile-page" id="main"><div class="bookings-intro"><span class="section-kicker">SUA CONTA</span><h1>Meu perfil</h1></div><div id="profile-content"></div></main>${bottomNav('bookings')}`;
   const holder = app.querySelector('#profile-content');
   authReady.then(async () => {
     if (!holder.isConnected) return;
@@ -1582,9 +1592,13 @@ function render() {
   else if (route[0] === 'politicas') renderPolicies();
   else renderHome();
   bindHeaderMenu();
-  window.scrollTo({ top: 0, behavior: 'auto' });
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  if (route[0] === 'politicas' && ['reservas', 'privacidade'].includes(route[1])) {
+    requestAnimationFrame(() => document.querySelector(`#policy-${route[1]}`)?.scrollIntoView({ block: 'start', behavior: 'instant' }));
+  }
 }
 
+initScrollGuide();
 window.addEventListener('hashchange', render);
 render();
 authReady.then(() => { if (location.hash === '' || location.hash === '#/' || location.hash === '#/perfil') render(); });
