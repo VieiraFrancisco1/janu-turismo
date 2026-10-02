@@ -207,7 +207,7 @@ export async function adminManualBooking(input) {
   const ref = doc(db, 'trip_inventory', input.tripId);
   const booking = { id, uid: linkedUid, tripId: input.tripId, firstName: input.firstName.trim(), lastName: input.lastName.trim(),
     cpf, cpfLast4: cpf.slice(-4), phone, seats, payment: 'a_combinar', boarding: (input.boarding || '').trim(),
-    status: 'confirmed', createdAt: new Date().toISOString(), source: 'whatsapp' };
+    status: 'pending', createdAt: new Date().toISOString(), source: 'whatsapp' };
   await runTransaction(db, async tx => {
     const trip = await tx.get(ref);
     if (!trip.exists() || trip.data().capacity - trip.data().reserved < seats) throw new Error('Não há vagas suficientes. Ajuste a capacidade antes de adicionar.');
