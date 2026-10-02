@@ -1591,3 +1591,70 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
   border-color: #ead6d6;
   background: #fffafa;
 }
+
+
+/* ETAPA 3 NOVO PROMPT: autenticação e parcelamento */
+.forgot-password {
+  min-height: 44px;
+  margin: 4px 0 -6px auto;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  color: #075fc6;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+}
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  color: #77899d;
+  font-size: 12px;
+}
+.auth-or::before,
+.auth-or::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: #dde6ef;
+}
+.google-login {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid #cfdce9;
+  border-radius: 12px;
+  background: #fff;
+  color: #17395f;
+  font: inherit;
+  font-weight: 800;
+}
+.google-mark {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #f2f5f8;
+  color: #1a73e8;
+  font-weight: 900;
+}
+[data-login-only][hidden] {
+  display: none !important;
+}
+.payment-note {
+  margin: 8px 0 0;
+  padding-top: 9px;
+  border-top: 1px solid #edf1f5;
+  color: #5a6f86;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.payment-admin-box strong {
+  color: #8a5a00;
+}
