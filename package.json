@@ -1,0 +1,9 @@
+{
+  "name": "janu-turismo-firebase-spark",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node build.mjs", "dev": "npm run build && node server.mjs" },
+  "dependencies": { "firebase": "^12.0.0" },
+  "devDependencies": { "esbuild": "^0.25.0" }
+}
