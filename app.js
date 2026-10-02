@@ -675,7 +675,7 @@ function bindHero() {
 }
 
 function visibleHomeTrips() {
-  return upcomingTrips().filter(trip => tripMatchesFilter(trip) && tripMatchesBoarding(trip));
+  return upcomingTrips().filter(trip => tripMatchesFilter(trip));
 }
 
 function bindDiscoveryControls({ home = false } = {}) {
@@ -702,13 +702,11 @@ function renderHome() {
   const upcomingSection = regularTrips.length ? `<section class="featured" aria-labelledby="featured-title">
       <div class="section-heading"><div><span class="section-kicker">DESTINOS PARA VOCÊ</span><h2 id="featured-title">Próximas viagens</h2></div><a href="#/viagens">Ver todas ${icon('arrowRight', 18)}</a></div>
       <div class="trip-grid home-trip-grid">${regularTrips.map(trip => tripCard(trip)).join('')}</div>
-    </section>` : `<section class="featured"><div class="empty-state"><h2>Nenhuma viagem encontrada</h2><p>Troque a cidade de embarque ou o tipo de passeio para ver outras opções.</p></div></section>`;
+    </section>` : `<section class="featured"><div class="empty-state"><h2>Nenhuma viagem encontrada</h2><p>Troque o tipo de passeio para ver outras opções.</p></div></section>`;
 
   app.innerHTML = `${header()}<main class="wrap page home-page" id="main">
     ${heroMarkup(heroTrips)}
-    ${trustBand()}
-    <section class="discovery-panel" aria-label="Encontrar uma viagem">
-      ${boardingSelector()}
+    <section class="discovery-panel home-discovery-panel" aria-label="Filtrar viagens">
       ${filterChips()}
     </section>
     ${upcomingSection}
