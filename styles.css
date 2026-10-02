@@ -1036,3 +1036,202 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
     margin-top: 24px;
   }
 }
+
+
+/* ETAPA D: status, mínimo e políticas */
+.trip-status.status-open,
+.availability-panel [data-seats].status-open {
+  background: #e7f7ee;
+  color: #17633a;
+}
+.trip-status.status-last-spots,
+.availability-panel [data-seats].status-last-spots {
+  background: #fff3d7;
+  color: #865900;
+}
+.trip-status.status-sold-out,
+.availability-panel [data-seats].status-sold-out,
+.trip-status.status-closed,
+.availability-panel [data-seats].status-closed {
+  background: #fdeaea;
+  color: #9b2d2d;
+}
+.trip-status.status-date-pending,
+.availability-panel [data-seats].status-date-pending {
+  background: #eef1ff;
+  color: #4e55a7;
+}
+.trip-status.status-preparing,
+.availability-panel [data-seats].status-preparing,
+.trip-status.status-unknown,
+.availability-panel [data-seats].status-unknown {
+  background: #eef4f8;
+  color: #526980;
+}
+.minimum-progress {
+  margin: 13px 0 0;
+  padding: 13px 14px;
+  border: 1px solid #dce8f3;
+  border-radius: 13px;
+  background: #fff;
+}
+.minimum-progress-copy {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.minimum-progress-copy strong {
+  color: #163a65;
+  font-size: 12px;
+  line-height: 1.3;
+}
+.minimum-progress-copy span {
+  flex: 0 0 auto;
+  color: #687b90;
+  font-size: 11px;
+}
+.minimum-progress-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef4;
+}
+.minimum-progress-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0b6ad2;
+  transition: width .25s ease;
+}
+.waitlist-cta {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #0a9d49;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+.waitlist-cta[hidden] { display: none; }
+#trip-booking-config.is-sold-out > :not(.waitlist-cta):not(.booking-config-heading) {
+  opacity: .58;
+}
+#whatsapp-reserve:disabled {
+  cursor: not-allowed;
+  background: #8b98a7;
+  opacity: 1;
+}
+.policy-summary-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 13px;
+}
+.policy-summary-links a {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 11px;
+  border: 1px solid #cfdeec;
+  border-radius: 10px;
+  background: #fff;
+  color: #075fc6;
+  font-size: 12px;
+  font-weight: 800;
+}
+.policy-page {
+  min-height: 100svh;
+  padding: 24px 17px 70px;
+  background: #f6f9fc;
+}
+.policy-shell {
+  width: min(100%, 780px);
+  margin: 0 auto;
+}
+.policy-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.policy-top img {
+  width: 112px;
+  height: auto;
+}
+.policy-back {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid #d5e2ef;
+  border-radius: 12px;
+  background: #fff;
+  color: #0b4f99;
+  font-size: 13px;
+  font-weight: 800;
+}
+.policy-card {
+  padding: 22px 18px;
+  border: 1px solid #dce7f1;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgba(13,50,85,.05);
+}
+.policy-card h1 {
+  margin: 5px 0 8px;
+  color: #092c60;
+  font-size: clamp(28px, 7vw, 40px);
+  line-height: 1.05;
+}
+.policy-card > p {
+  color: #58708a;
+  line-height: 1.55;
+}
+.policy-block {
+  margin-top: 24px;
+}
+.policy-block h2 {
+  margin: 0 0 9px;
+  color: #123a66;
+  font-size: 19px;
+}
+.policy-block ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #425b76;
+  line-height: 1.6;
+}
+.policy-warning {
+  margin-top: 20px;
+  padding: 13px 14px;
+  border-left: 4px solid #e3a11b;
+  border-radius: 8px;
+  background: #fff7df;
+  color: #654e22;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.policy-links-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 24px;
+}
+.policy-links-bottom a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 13px;
+  border-radius: 11px;
+  background: #eaf4ff;
+  color: #075fc6;
+  font-size: 13px;
+  font-weight: 800;
+}
