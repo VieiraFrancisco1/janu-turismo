@@ -1920,3 +1920,123 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
     width: 100%;
   }
 }
+
+
+/* HERO FULL BLEED + VAGAS + SETAS */
+.home-page .hero-carousel {
+  width: 100vw;
+  max-width: none;
+  height: 264px;
+  margin: 0 calc(50% - 50vw);
+  border-radius: 0;
+  box-shadow: none;
+}
+.home-page .hero-carousel .hero-slide > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.home-page .hero-carousel .hero-slide .hero-copy {
+  width: min(88%, 520px);
+  padding: 22px 58px 42px;
+  justify-content: center;
+}
+.hero-info-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 9px;
+}
+.hero-info-row .hero-offer {
+  margin: 0 !important;
+}
+.hero-vacancies {
+  width: fit-content;
+  margin: 0 !important;
+  padding: 5px 9px;
+  border: 1px solid rgba(255,255,255,.44);
+  border-radius: 999px;
+  background: rgba(5,35,68,.72);
+  color: #fff !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+  backdrop-filter: blur(6px);
+}
+.hero-vacancies.is-demo {
+  border-style: dashed;
+  color: #f7fbff !important;
+}
+.hero-carousel .hero-cta {
+  min-width: 126px;
+  min-height: 46px;
+  justify-content: center;
+  margin-top: 11px;
+  padding: 10px 15px;
+  gap: 10px;
+  border-radius: 14px;
+  font-size: 13px;
+  box-shadow: 0 7px 18px rgba(0,0,0,.18);
+}
+.hero-carousel .hero-cta svg {
+  transition: transform .18s ease;
+}
+.hero-carousel .hero-cta:hover svg,
+.hero-carousel .hero-cta:focus-visible svg {
+  transform: translateX(3px);
+}
+.hero-arrow {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  border-color: rgba(255,255,255,.68);
+  background: rgba(4,31,64,.68);
+  box-shadow: 0 4px 14px rgba(0,0,0,.18);
+  transition: transform .18s ease, background .18s ease;
+  animation: hero-arrow-pulse 1.8s ease-in-out infinite;
+}
+.hero-arrow:hover,
+.hero-arrow:focus-visible {
+  background: rgba(5,52,101,.9);
+}
+.hero-arrow-prev {
+  left: 9px;
+}
+.hero-arrow-next {
+  right: 9px;
+}
+.hero-arrow-prev:hover,
+.hero-arrow-prev:focus-visible {
+  transform: translateY(-50%) translateX(-2px) scale(1.05);
+}
+.hero-arrow-next:hover,
+.hero-arrow-next:focus-visible {
+  transform: translateY(-50%) translateX(2px) scale(1.05);
+}
+.hero-dots {
+  bottom: 13px;
+}
+@keyframes hero-arrow-pulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,.18), 0 0 0 0 rgba(255,255,255,.28); }
+  50% { box-shadow: 0 4px 14px rgba(0,0,0,.18), 0 0 0 5px rgba(255,255,255,0); }
+}
+@media (min-width: 700px) {
+  .home-page .hero-carousel {
+    height: 340px;
+  }
+  .home-page .hero-carousel .hero-slide .hero-copy {
+    padding-left: 76px;
+    padding-right: 76px;
+  }
+  .hero-arrow-prev { left: 18px; }
+  .hero-arrow-next { right: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-arrow {
+    animation: none;
+  }
+  .hero-carousel .hero-cta svg {
+    transition: none;
+  }
+}
