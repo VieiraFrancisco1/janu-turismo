@@ -2,15 +2,13 @@ import { cp, mkdir, rm } from 'node:fs/promises';
 import { build } from 'esbuild';
 
 await rm('dist', { recursive: true, force: true });
-await mkdir('dist/assets', { recursive: true });
+await mkdir('dist', { recursive: true });
 
 for (const file of ['index.html', 'styles.css', 'politica-reservas.html', 'politica-cancelamento.html']) {
   await cp(file, `dist/${file}`);
 }
 
-for (const asset of ['logo-janu.png', 'guaramiranga.webp', 'sitio-do-bosco.webp', 'jericoacoara.webp', 'lagoa-do-paraiso.webp', 'lagoinha.webp']) {
-  await cp(`assets/${asset}`, `dist/assets/${asset}`);
-}
+await cp('assets', 'dist/assets', { recursive: true });
 
 await build({
   entryPoints: ['app.js'],
