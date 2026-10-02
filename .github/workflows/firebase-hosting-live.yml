@@ -1,0 +1,57 @@
+name: Deploy Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Prepare Firebase credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+
+          const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+          if (!raw) {
+            throw new Error('Secret FIREBASE_SERVICE_ACCOUNT não configurado.');
+          }
+
+          const serviceAccount = JSON.parse(raw);
+          if (!serviceAccount.project_id) {
+            throw new Error('A chave não contém project_id.');
+          }
+
+          const credentialsPath = path.join(process.env.RUNNER_TEMP, 'firebase-service-account.json');
+          fs.writeFileSync(credentialsPath, JSON.stringify(serviceAccount));
+          fs.appendFileSync(process.env.GITHUB_ENV, `GOOGLE_APPLICATION_CREDENTIALS=${credentialsPath}\n`);
+          fs.appendFileSync(process.env.GITHUB_ENV, `FIREBASE_PROJECT_ID=${serviceAccount.project_id}\n`);
+          NODE
+
+      - name: Deploy to Firebase Hosting
+        run: npx --yes firebase-tools@latest deploy --only hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
