@@ -85,6 +85,12 @@ try {
   assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 4);
   await admin.adminSetStatus({ id: saved.id, status: 'confirmed' });
   assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 4);
+  await admin.adminSetStatus({ id: saved.id, status: 'pending' });
+  assert.equal((await getDoc(doc(customer, 'bookings', saved.id))).data().status, 'pending');
+  assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 4);
+  await admin.adminSetStatus({ id: saved.id, status: 'confirmed' });
+  assert.equal((await getDoc(doc(customer, 'bookings', saved.id))).data().status, 'confirmed');
+  assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 4);
   await admin.adminSetStatus({ id: saved.id, status: 'cancelled' });
   await admin.adminSetStatus({ id: saved.id, status: 'cancelled' });
   assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 0);
