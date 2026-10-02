@@ -1,10 +1,11 @@
+import { tripDeadline } from './reservation-lifecycle.js';
+
 export function bookingId() {
   return `JT-${Array.from(crypto.getRandomValues(new Uint8Array(5)), n => n.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
 }
 
 export function bookingClosesAt(trip) {
-  const date = trip.endDate || trip.startDate;
-  return /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? new Date(new Date(`${date}T00:00:00-03:00`).getTime() + 86400000) : new Date(0);
+  return new Date(tripDeadline(trip) || 0);
 }
 
 export function prepareCatalog(trip) {
@@ -44,7 +45,7 @@ export function bookingSnapshot(trip, input) {
     throw new Error('Escolha uma cidade de embarque válida para esta opção.');
   }
   return {
-    tripTitle: trip.title, tripDate: trip.date, tripStartDate: trip.startDate,
+    tripTitle: trip.title, tripDate: trip.date, tripStartDate: trip.startDate, tripEndDate: trip.endDate || trip.startDate,
     fareIndex, fareLabel: fare.label, fareSeats: fare.seats,
     quantity, seats: fare.seats * quantity, unitPriceCents: fare.amountCents,
     totalCents: fare.amountCents * quantity, boarding,

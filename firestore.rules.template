@@ -18,6 +18,7 @@ service cloud.firestore {
       return trip.published == true && trip.dateTbc == false
         && !(trip.status in ['esgotado', 'encerrado', 'data-a-confirmar'])
         && trip.bookingClosesAt > request.time
+        && d.expiresAt == trip.bookingClosesAt && d.tripEndDate == trip.endDate
         && d.tripTitle == trip.title && d.tripDate == trip.date && d.tripStartDate == trip.startDate
         && d.fareLabel == fare.label && d.fareSeats == fare.seats && d.unitPriceCents == fare.amountCents
         && d.seats == fare.seats * d.quantity && d.totalCents == fare.amountCents * d.quantity
@@ -26,8 +27,8 @@ service cloud.firestore {
     }
     function newBooking(d, id) {
       return signed() && id.matches('^JT-[A-F0-9]{10}$')
-        && d.keys().hasAll(['id', 'uid', 'tripId', 'firstName', 'lastName', 'cpf', 'cpfLast4', 'phone', 'seats', 'payment', 'boarding', 'status', 'createdAt', 'createdAtServer', 'seatsHeld', 'fareIndex', 'fareLabel', 'fareSeats', 'quantity', 'unitPriceCents', 'totalCents', 'tripTitle', 'tripDate', 'tripStartDate'])
-        && d.keys().hasOnly(['id', 'uid', 'tripId', 'firstName', 'lastName', 'cpf', 'cpfLast4', 'phone', 'seats', 'payment', 'boarding', 'status', 'createdAt', 'createdAtServer', 'seatsHeld', 'fareIndex', 'fareLabel', 'fareSeats', 'quantity', 'unitPriceCents', 'totalCents', 'tripTitle', 'tripDate', 'tripStartDate'])
+        && d.keys().hasAll(['id', 'uid', 'tripId', 'firstName', 'lastName', 'cpf', 'cpfLast4', 'phone', 'seats', 'payment', 'boarding', 'status', 'createdAt', 'createdAtServer', 'seatsHeld', 'fareIndex', 'fareLabel', 'fareSeats', 'quantity', 'unitPriceCents', 'totalCents', 'tripTitle', 'tripDate', 'tripStartDate', 'tripEndDate', 'expiresAt'])
+        && d.keys().hasOnly(['id', 'uid', 'tripId', 'firstName', 'lastName', 'cpf', 'cpfLast4', 'phone', 'seats', 'payment', 'boarding', 'status', 'createdAt', 'createdAtServer', 'seatsHeld', 'fareIndex', 'fareLabel', 'fareSeats', 'quantity', 'unitPriceCents', 'totalCents', 'tripTitle', 'tripDate', 'tripStartDate', 'tripEndDate', 'expiresAt'])
         && d.id == id && d.uid == request.auth.uid && d.tripId.matches('^[a-z0-9-]{3,45}$')
         && d.firstName is string && d.firstName.size() >= 2 && d.firstName.size() <= 60
         && d.lastName is string && d.lastName.size() >= 2 && d.lastName.size() <= 80
@@ -109,7 +110,8 @@ service cloud.firestore {
         && ((request.resource.data.seatsHeld == true && holdsSeats(request.resource.data, bookingId))
           || (request.resource.data.seatsHeld == false && unconfigured(request.resource.data))));
       allow update: if agencyStatusChange();
-      allow delete: if false;
+      allow delete: if agency() && (resource.data.status == 'cancelled' || !held(resource.data)
+        || getAfter(tripPath(resource.data.tripId)).data.reserved == get(tripPath(resource.data.tripId)).data.reserved - resource.data.seats);
     }
     match /{document=**} { allow read, write: if false; }
   }

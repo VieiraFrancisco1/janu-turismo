@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where, orderBy, limit, runTransaction, serverTimestamp, Timestamp, onSnapshot } from 'firebase/firestore';
 import { bookingId, bookingClosesAt, prepareCatalog, catalogForApp, bookingSnapshot } from './booking-model.js';
+import { reservationDeadline, reservationVisible, watchDeadlines, tripDeadline } from './reservation-lifecycle.js';
 import { firebaseConfig } from './firebase-config.js';
 import { nameAccountEmail, isNameAccount, accountLabel } from './account-name.js';
 export { accountLabel } from './account-name.js';
@@ -152,7 +153,7 @@ export async function createBooking(input) {
       if (seatsHeld && trip.capacity - trip.reserved < snapshot.seats) throw new Error('Não há vagas suficientes para essa quantidade.');
       booking = {
         id, uid: user.uid, tripId: input.tripId, firstName, lastName, cpf, cpfLast4: cpf.slice(-4), phone,
-        ...snapshot, payment: input.payment, seatsHeld, status: 'pending',
+        ...snapshot, expiresAt: Timestamp.fromDate(bookingClosesAt(catalogSnap.data())), payment: input.payment, seatsHeld, status: 'pending',
         createdAt: new Date().toISOString(), createdAtServer: serverTimestamp(),
       };
       tx.set(bookingRef, booking);
@@ -172,31 +173,50 @@ export async function getBooking(id) {
   const snap = await getDoc(doc(db, 'bookings', id));
   if (!snap.exists()) throw new Error('Reserva não encontrada.');
   if (snap.data().uid !== currentUser().uid) throw new Error('Esta reserva pertence a outra conta.');
+  if (!reservationVisible(snap.data(), await getCatalog())) throw new Error('Esta viagem já terminou e a reserva saiu das listas.');
   return { booking: snap.data() };
 }
 export async function myBookings() {
   const user = requireUser();
   const snap = await getDocs(query(collection(db, 'bookings'), where('uid', '==', user.uid)));
-  return snap.docs.map(doc => doc.data()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const catalog = await getCatalog();
+  return snap.docs.map(doc => doc.data()).filter(item => reservationVisible(item, catalog)).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+}
+function reservationStream(ref, extract, onChange, onError) {
+  let records = null, catalog = null, disposed = false, stopClock = () => {};
+  const emit = () => {
+    if (disposed || records === null || catalog === null) return;
+    onChange(records.filter(item => reservationVisible(item, catalog)));
+  };
+  const schedule = () => {
+    stopClock();
+    if (records && catalog) stopClock = watchDeadlines(records.map(item => reservationDeadline(item, catalog)), emit);
+    emit();
+  };
+  getCatalog().then(items => { if (!disposed) { catalog = items; schedule(); } }).catch(() => { if (!disposed) onError(new Error('Não conseguimos conferir as datas das reservas. Tente novamente.')); });
+  const stopSnapshot = onSnapshot(ref, snap => { records = extract(snap); schedule(); }, () => {
+    if (!disposed) onError(new Error('Não conseguimos atualizar suas reservas. Confira a conexão e tente novamente.'));
+  });
+  return () => { disposed = true; stopSnapshot(); stopClock(); };
 }
 export function watchBooking(id, onChange, onError) {
   const user = requireUser();
-  return onSnapshot(doc(db, 'bookings', id), snap => {
-    if (!snap.exists() || snap.data().uid !== user.uid) { onError(new Error('Reserva não encontrada nesta conta.')); return; }
-    onChange(snap.data());
-  }, () => onError(new Error('Não conseguimos atualizar sua reserva. Confira a conexão e tente novamente.')));
+  return reservationStream(doc(db, 'bookings', id), snap => snap.exists() && snap.data().uid === user.uid ? [snap.data()] : [], items => {
+    if (!items.length) { onError(new Error('Esta reserva foi apagada ou a viagem já terminou.')); return; }
+    onChange(items[0]);
+  }, onError);
 }
 export function watchMyBookings(onChange, onError) {
   const user = requireUser();
-  return onSnapshot(query(collection(db, 'bookings'), where('uid', '==', user.uid)), snap => {
-    onChange(snap.docs.map(item => item.data()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
-  }, () => onError(new Error('Não conseguimos carregar suas reservas. Confira a conexão e tente novamente.')));
+  return reservationStream(query(collection(db, 'bookings'), where('uid', '==', user.uid)), snap => snap.docs.map(item => item.data()), items => {
+    onChange(items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
+  }, onError);
 }
 
 export async function adminGet(ids = []) {
   requireUser();
-  const [trips, snap, catalog] = await Promise.all([getTrips(ids), getDocs(query(collection(db, 'bookings'), orderBy('createdAt', 'desc'), limit(150))), getCatalog()]);
-  return { trips, bookings: snap.docs.map(doc => doc.data()), catalog };
+  const [trips, snap, catalog] = await Promise.all([getTrips(ids), getDocs(query(collection(db, 'bookings'), orderBy('createdAt', 'desc'))), getCatalog()]);
+  return { trips: trips.filter(item => { const deadline = tripDeadline(catalog.find(trip => trip.id === item.id) || {}); return deadline === null || Date.now() < deadline; }), bookings: snap.docs.map(doc => doc.data()).filter(item => reservationVisible(item, catalog)), catalog };
 }
 export async function adminSetCapacity({ tripId, capacity, enabled }) {
   requireUser();
@@ -246,6 +266,11 @@ export async function adminManualBooking(input) {
     cpf, cpfLast4: cpf.slice(-4), phone, seats, payment: 'a_combinar', boarding: (input.boarding || '').trim(),
     status: 'pending', seatsHeld: true, createdAt: new Date().toISOString(), createdAtServer: serverTimestamp(), source: 'whatsapp' };
   await runTransaction(db, async tx => {
+    const catalog = await tx.get(doc(db, 'trip_catalog', input.tripId));
+    if (!catalog.exists() || !catalog.data().published || bookingClosesAt(catalog.data()) <= new Date()) throw new Error('Esta viagem não recebe novas reservas.');
+    booking.tripTitle = catalog.data().title; booking.tripDate = catalog.data().date;
+    booking.tripStartDate = catalog.data().startDate; booking.tripEndDate = catalog.data().endDate || catalog.data().startDate;
+    booking.expiresAt = Timestamp.fromDate(bookingClosesAt(catalog.data()));
     const trip = await tx.get(ref);
     if (!trip.exists() || trip.data().demo || !trip.data().enabled || trip.data().capacity - trip.data().reserved < seats) throw new Error('Não há vagas suficientes. Ajuste a capacidade antes de adicionar.');
     tx.set(doc(db, 'bookings', id), booking);
@@ -276,6 +301,25 @@ export async function adminSetStatus({ id, status }) {
       tx.update(tripRef, { reserved });
     }
     tx.update(bookingRef, { status, seatsHeld: status === 'confirmed', updatedAt: serverTimestamp() });
+  });
+  invalidateTripCache();
+}
+
+export async function adminDeleteBooking(id) {
+  requireUser();
+  if (!/^JT-[A-F0-9]{10}$/.test(id)) throw new Error('Reserva inválida.');
+  const bookingRef = doc(db, 'bookings', id);
+  await runTransaction(db, async tx => {
+    const snapshot = await tx.get(bookingRef);
+    if (!snapshot.exists()) return;
+    const booking = snapshot.data();
+    if (booking.status !== 'cancelled' && booking.seatsHeld !== false) {
+      const tripRef = doc(db, 'trip_inventory', booking.tripId);
+      const snapshot = await tx.get(tripRef);
+      if (!snapshot.exists() || snapshot.data().reserved < booking.seats) throw new Error('Confira as vagas da viagem antes de apagar a reserva.');
+      tx.update(tripRef, { reserved: snapshot.data().reserved - booking.seats });
+    }
+    tx.delete(bookingRef);
   });
   invalidateTripCache();
 }

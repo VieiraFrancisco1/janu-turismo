@@ -1,8 +1,9 @@
+import { cearaDate, tripDeadline, reservationDeadline, watchDeadlines } from './reservation-lifecycle.js';
 import { bookingId } from './booking-model.js';
 import { photoCarouselMarkup, explorePhotosMarkup, initPhotoGallery } from './photo-gallery.js';
 import { initScrollGuide } from './scroll-guide.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
-import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
+import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
 
@@ -27,6 +28,8 @@ let filter = 'Todos';
 let query = '';
 let disposeDetailPhotos = () => {};
 let disposeBookings = () => {};
+let disposeAdminExpiry = () => {};
+let disposeTripExpiry = () => {};
 
 const paths = {
   arrowLeft: '<path d="m15 18-6-6 6-6"/>',
@@ -379,13 +382,7 @@ function normalizeTrip(trip) {
   };
 }
 
-function todayIso() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
+function todayIso() { return cearaDate(); }
 
 function isSpecialActive(trip) {
   if (!trip.published || !trip.special) return false;
@@ -400,6 +397,7 @@ async function loadCatalog() {
     const lookup = new Map(stored.map(trip => [trip.id, trip]));
     TRIPS = starterTrips.map(trip => normalizeTrip({ ...trip, ...lookup.get(trip.id) }));
     TRIPS.push(...stored.filter(trip => !starterTrips.some(base => base.id === trip.id)).map(normalizeTrip));
+    trackTripExpiry();
     render();
   } catch (error) { showToast('Não foi possível carregar as viagens da agência.'); }
 }
@@ -459,6 +457,19 @@ function upcomingTrips() {
   return TRIPS
     .filter(trip => trip.published && !isTripPast(trip))
     .sort(compareTripsByStartDate);
+}
+
+function trackTripExpiry() {
+  disposeTripExpiry();
+  let visible = upcomingTrips().map(trip => trip.id).join('|');
+  disposeTripExpiry = watchDeadlines(TRIPS.map(tripDeadline), () => {
+    const next = upcomingTrips().map(trip => trip.id).join('|');
+    if (visible === next) return;
+    visible = next;
+    const detailId = location.hash.match(/^#\/viagem\/([^/]+)/)?.[1];
+    if (detailId && !isTripPast(TRIPS.find(trip => trip.id === detailId) || {})) return;
+    render();
+  });
 }
 
 function tripHasAccommodation(trip) {
@@ -1575,10 +1586,16 @@ async function loadAdmin() {
   const { trips, bookings } = await adminFetch();
   const content = app.querySelector('#admin-content');
   if (!content) return;
+  disposeAdminExpiry();
+  let visibleBookings = bookings.map(booking => booking.id).join('|');
+  disposeAdminExpiry = watchDeadlines(bookings.map(booking => reservationDeadline(booking, TRIPS)), () => {
+    const next = bookings.filter(booking => { const deadline = reservationDeadline(booking, TRIPS); return deadline === null || Date.now() < deadline; }).map(booking => booking.id).join('|');
+    if (next !== visibleBookings && content.isConnected) { visibleBookings = next; loadAdmin().catch(() => showToast('Não foi possível atualizar as reservas.')); }
+  });
   content.innerHTML = `<div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="refresh-admin">Atualizar</button><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Pedidos sem vagas configuradas aguardam confirmação. Defina a capacidade real para separar lugares e confirmar pagamentos. Ao pausar uma viagem, novos pedidos ficam bloqueados.</p><div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => { const catalogTrip = TRIPS.find(item => item.id === trip.id); const ended = catalogTrip && isTripPast(catalogTrip); return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}"><div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div><span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}${!trip.demo && trip.available > 0 && trip.available <= 5 ? ` · ⚠️ Últimas ${trip.available} vagas` : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`; }).join('')}</div><div id="admin-editor-slot"></div>
-    <section class="manual-section"><h2>Adicionar reserva recebida pelo WhatsApp</h2><p>O passageiro ocupa as vagas imediatamente. Informe o nome de acesso ou e-mail usado no site para vincular à conta dele.</p><form id="manual-booking" class="admin-editor"><label>Viagem<select name="tripId" required>${TRIPS.map(trip => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.title)} · ${escapeHtml(trip.date)}</option>`).join('')}</select></label><div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div><div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div><div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div><label>Nome de acesso ou e-mail do cliente (opcional)<input name="identifier" type="text" placeholder="Para aparecer em Minhas reservas" /></label><button type="submit">Salvar passageiro e descontar vagas</button><p id="manual-error" class="form-error" hidden></p></form></section>
+    <section class="manual-section"><h2>Adicionar reserva recebida pelo WhatsApp</h2><p>O passageiro ocupa as vagas imediatamente. Informe o nome de acesso ou e-mail usado no site para vincular à conta dele.</p><form id="manual-booking" class="admin-editor"><label>Viagem<select name="tripId" required>${upcomingTrips().map(trip => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.title)} · ${escapeHtml(trip.date)}</option>`).join('')}</select></label><div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div><div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div><div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div><label>Nome de acesso ou e-mail do cliente (opcional)<input name="identifier" type="text" placeholder="Para aparecer em Minhas reservas" /></label><button type="submit">Salvar passageiro e descontar vagas</button><p id="manual-error" class="form-error" hidden></p></form></section>
     <section class="passengers-admin"><div class="admin-section-heading"><div><h2>Passageiros por viagem</h2><p>Lista agrupada por embarque. Cópia e CSV não incluem o CPF completo.</p></div></div><div class="passengers-admin-list">${passengerGroupsMarkup(bookings)}</div></section>
-    <h2>Últimas reservas</h2><div class="admin-bookings">${bookings.length ? bookings.map(booking => `<article><strong>${escapeHtml(booking.id)} · ${escapeHtml(booking.tripTitle || tripName(booking.tripId))}</strong><p>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)} · CPF final ${escapeHtml(booking.cpfLast4)} · ${escapeHtml(booking.phone)}</p><p>${booking.seats} passageiros · ${booking.source === 'whatsapp' ? 'WhatsApp · ' : ''}${paymentLabel(booking.payment)} · ${escapeHtml(statusLabel(booking.status))}${Number.isInteger(booking.totalCents) ? ` · ${money(booking.totalCents / 100)} · ${escapeHtml(booking.fareLabel)} × ${booking.quantity}` : ''}</p>${booking.status === 'pending' ? `<button class="admin-paid-button" data-action="confirmed" data-id="${booking.id}">Confirmar pagamento e reserva</button>` : ''}${booking.status !== 'cancelled' ? `<button data-action="cancelled" data-id="${booking.id}">Cancelar reserva</button><a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">Falar com o cliente</a>` : ''}</article>`).join('') : '<p>Nenhuma reserva registrada.</p>'}</div>`;
+    <h2>Últimas reservas</h2><div class="admin-bookings">${bookings.length ? bookings.map(booking => `<article><strong>${escapeHtml(booking.id)} · ${escapeHtml(booking.tripTitle || tripName(booking.tripId))}</strong><p>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)} · CPF final ${escapeHtml(booking.cpfLast4)} · ${escapeHtml(booking.phone)}</p><p>${booking.seats} passageiros · ${booking.source === 'whatsapp' ? 'WhatsApp · ' : ''}${paymentLabel(booking.payment)} · ${escapeHtml(statusLabel(booking.status))}${Number.isInteger(booking.totalCents) ? ` · ${money(booking.totalCents / 100)} · ${escapeHtml(booking.fareLabel)} × ${booking.quantity}` : ''}</p>${booking.status === 'pending' ? `<button class="admin-paid-button" data-action="confirmed" data-id="${booking.id}">Confirmar pagamento e reserva</button>` : ''}${booking.status !== 'cancelled' ? `<button data-action="cancelled" data-id="${booking.id}">Cancelar reserva</button><a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">Falar com o cliente</a>` : ''}<button class="admin-delete-button" data-delete-booking="${booking.id}">Apagar reserva</button></article>`).join('') : '<p>Nenhuma reserva registrada.</p>'}</div>`;
   content.querySelectorAll('[data-copy-passengers]').forEach(button => button.addEventListener('click', async () => {
     const csv = passengerCsv(button.dataset.copyPassengers, bookings);
     try {
@@ -1608,6 +1625,12 @@ async function loadAdmin() {
     try { await adminFetch('PUT', { tripId: form.dataset.id, capacity: Number(form.elements.capacity.value), enabled: form.elements.enabled.checked }); await loadAdmin(); showToast('Vagas atualizadas'); }
     catch (error) { showToast(error.message); button.disabled = false; }
   }));
+  content.querySelectorAll('[data-delete-booking]').forEach(button => button.addEventListener('click', async () => {
+    if (!confirm('Apagar esta reserva de todas as contas? Os lugares separados serão liberados. Esta ação não pode ser desfeita.')) return;
+    button.disabled = true;
+    try { await adminDeleteBooking(button.dataset.deleteBooking); await loadAdmin(); showToast('Reserva apagada de todas as contas.'); }
+    catch (error) { showToast(error.message); button.disabled = false; }
+  }));
   content.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', async () => {
     if (!confirm(button.dataset.action === 'confirmed' ? 'Confirmar disponibilidade e pagamento recebido desta reserva?' : 'Cancelar esta reserva e liberar os lugares que estavam separados?')) return;
     button.disabled = true;
@@ -1617,6 +1640,8 @@ async function loadAdmin() {
 }
 
 function render() {
+  disposeAdminExpiry();
+  disposeAdminExpiry = () => {};
   disposeBookings();
   disposeBookings = () => {};
   document.querySelectorAll('.booking-auth-dialog').forEach(dialog => { dialog.close(); dialog.remove(); });
@@ -1641,6 +1666,7 @@ function render() {
 }
 
 initScrollGuide();
+trackTripExpiry();
 window.addEventListener('hashchange', render);
 render();
 authReady.then(() => { if (location.hash === '' || location.hash === '#/' || location.hash === '#/perfil') render(); });

@@ -85,3 +85,11 @@ npx --yes firebase-tools@14.17.0 emulators:exec --project demo-janu --only fires
 ```
 
 As regras publicadas continuam fechadas para leitura pública de reservas e perfis. Nunca publique o antigo arquivo de regras de negação total nem regras abertas. Para publicação manual desta versão no projeto oficial, use `npx firebase deploy --only firestore:rules,hosting --project janu-turismo-e747f`.
+
+### Expiração e exclusão de reservas
+
+Viagens saem da Home, de Viagens e das listas da gestão no dia seguinte à data final, à meia-noite no fuso `America/Fortaleza`. Exemplo: 12 e 13 de dezembro ficam visíveis até o fim do dia 13; no dia 14, a viagem e suas reservas deixam de aparecer. O cliente não precisa atualizar uma página que já esteja aberta. Ao voltar a uma aba suspensa, o prazo é reavaliado.
+
+Novas reservas guardam `tripEndDate` e `expiresAt`, validados contra a data final do catálogo. Reservas anteriores usam a data final da viagem como compatibilidade. Reservas recebidas pelo WhatsApp recebem o mesmo prazo. A expiração remove os registros das telas; os dados permanecem no banco. Viagens sem data definida permanecem visíveis até receber uma data.
+
+O painel `#/gestao` mantém `+ Adicionar viagem` e `Editar informações e fotos`, com formulário para datas, preços, embarques, roteiro, inclusos, pagamento e fotos. O botão `Apagar reserva` pede confirmação e exclui o documento de todas as contas. Se a reserva ainda ocupava vagas, a exclusão e a liberação são feitas em uma única transação. Clientes comuns não podem excluir registros da gestão.

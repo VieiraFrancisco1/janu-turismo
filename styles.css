@@ -2950,3 +2950,6 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
 .confirmation-card .text-link { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px; }
 .booking-form-error[hidden] { display: none; }
 .admin-bookings article { overflow-wrap: anywhere; }
+
+.admin-bookings .admin-delete-button { color: #a33333; border-color: #e6c7c7; background: #fff8f8; }
+.admin-toolbar { flex-wrap: wrap; gap: 10px; }

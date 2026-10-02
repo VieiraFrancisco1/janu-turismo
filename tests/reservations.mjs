@@ -4,6 +4,7 @@ import vm from 'node:vm';
 import { initializeTestEnvironment, assertFails } from '@firebase/rules-unit-testing';
 import * as firestore from 'firebase/firestore';
 import { prepareCatalog, bookingClosesAt } from '../booking-model.js';
+import { cearaDate, afterTripDate, tripDeadline, reservationVisible } from '../reservation-lifecycle.js';
 const rules = (await fs.readFile(new URL('../firestore.rules.template', import.meta.url), 'utf8')).replaceAll('__ADMIN_UID__', 'agency');
 const environment = await initializeTestEnvironment({ projectId: 'demo-janu', firestore: { rules, host: '127.0.0.1', port: 8080 } });
 const { doc, setDoc, getDoc, getDocs, collection, Timestamp, serverTimestamp, updateDoc, runTransaction } = firestore;
@@ -25,7 +26,7 @@ async function dataModule(db, uid) {
     'firebase/firestore': synthetic({ ...firestore, getFirestore: () => db,
       setDoc: (ref, data, ...rest) => firestore.setDoc(ref, plain(data), ...rest),
       runTransaction: (database, callback) => firestore.runTransaction(database, tx => callback({
-        get: tx.get.bind(tx), set: (ref, data) => tx.set(ref, plain(data)), update: (ref, data) => tx.update(ref, plain(data)),
+        get: tx.get.bind(tx), delete: tx.delete.bind(tx), set: (ref, data) => tx.set(ref, plain(data)), update: (ref, data) => tx.update(ref, plain(data)),
       })),
     }),
     './firebase-config.js': synthetic({ firebaseConfig: { apiKey: 'test', projectId: 'demo-janu', appId: 'test' } }),
@@ -49,10 +50,20 @@ async function inventory(fields) {
   await environment.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), 'trip_inventory', trip.id), fields));
 }
 try {
+  assert.equal(cearaDate(Date.parse('2026-10-03T02:59:59Z')), '2026-10-02');
+  assert.equal(cearaDate(Date.parse('2026-10-03T03:00:00Z')), '2026-10-03');
+  const deadline = afterTripDate('2026-12-13');
+  assert.equal(deadline, Date.parse('2026-12-14T03:00:00Z'));
+  assert.equal(tripDeadline({ startDate: '2026-12-12', endDate: '2026-12-13' }), deadline);
+  assert.equal(reservationVisible({ tripEndDate: '2026-12-13' }, [], deadline - 1), true);
+  assert.equal(reservationVisible({ tripEndDate: '2026-12-13' }, [], deadline), false);
+  assert.equal(reservationVisible({ tripId: 'legacy' }, [{id:'legacy', endDate:'2026-12-13'}], deadline), false);
+  assert.equal(reservationVisible({ tripId: 'without-date' }, [], deadline), true);
   await environment.clearFirestore(); await seed();
   const client = await dataModule(customer, 'customer');
   const admin = await dataModule(agency, 'agency');
   const saved = (await client.createBooking(input)).booking;
+  assert.equal(saved.tripEndDate, trip.endDate); assert.equal(saved.expiresAt.toMillis(), bookingClosesAt(trip).getTime());
   assert.equal(saved.totalCents, 160000); assert.equal(saved.seats, 4); assert.equal(saved.seatsHeld, false);
   assert.equal((await getDoc(doc(customer, 'bookings', saved.id))).data().tripTitle, trip.title);
   await client.createBooking(input); assert.equal((await client.myBookings()).length, 1);
@@ -103,6 +114,22 @@ try {
   const updatedCatalog = (await admin.getCatalog()).find(item => item.id === trip.id);
   assert.deepEqual(Array.from(updatedCatalog.includes[0]), ['bus', 'Transporte']);
   assert.equal((await getDoc(doc(customer, 'trip_catalog', trip.id))).data().includes[0].label, 'Transporte');
+  await assertFails(firestore.deleteDoc(doc(customer, 'bookings', successful.id)));
+  await inventory({ capacity: 10, reserved: successful.seats, enabled: true, demo: false });
+  await assertFails(firestore.deleteDoc(doc(agency, 'bookings', successful.id)));
+  await admin.adminDeleteBooking(successful.id);
+  assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 0);
+  assert.equal((await getDoc(doc(agency, 'bookings', successful.id))).exists(), false);
+  await admin.adminDeleteBooking(successful.id);
+  await admin.adminDeleteBooking(saved.id);
+  assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 0);
+  await environment.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'bookings', 'JT-0000000008'), { ...saved, id:'JT-0000000008', seatsHeld:false, tripEndDate:'2020-01-01', expiresAt:Timestamp.fromDate(new Date('2020-01-02T03:00:00Z')) });
+  });
+  assert.equal((await client.myBookings()).some(item => item.id === 'JT-0000000008'), false);
+  assert.equal((await admin.adminGet([trip.id])).bookings.some(item => item.id === 'JT-0000000008'), false);
+  await assert.rejects(client.getBooking('JT-0000000008'), /terminou/);
+  console.log('PASS: horário Ceará, prazo pela data final, ocultação em cliente/gestão e exclusão segura com liberação única de vagas.');
   console.log('PASS: salvamento, preço validado, privacidade, repetição segura, limite simultâneo e confirmação/cancelamento.');
 } finally {
   await environment.cleanup();
