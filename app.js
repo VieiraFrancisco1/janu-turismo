@@ -1,7 +1,16 @@
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
+import { DEPOIMENTOS } from './depoimentos.js';
 import { configured, authReady, currentUser, login, logout, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
+const AGENCY_INFO = {
+  instagram: 'https://www.instagram.com/januturismo_/',
+  instagramHandle: '@januturismo_',
+  registry: {
+    value: '67.223.094/0001-39',
+    verified: false, // [CONFIRMAR] se é CNPJ, registro Cadastur ou outra identificação.
+  },
+};
 const SAMPLE_SEATS = { guaramiranga: 24, 'sitio-do-bosco': 20, jericoacoara: 32 };
 let inventory = {};
 let inventoryReady = false;
@@ -329,6 +338,59 @@ function boardingSummary(trip) {
   return `${places.slice(0, 2).join(' · ')} +${places.length - 2}`;
 }
 
+function bindImageSkeletons(root = app) {
+  root.querySelectorAll('.image-skeleton img').forEach(img => {
+    const holder = img.closest('.image-skeleton');
+    const reveal = () => holder?.classList.add('is-loaded');
+    if (img.complete) reveal();
+    else {
+      img.addEventListener('load', reveal, { once: true });
+      img.addEventListener('error', reveal, { once: true });
+    }
+  });
+}
+
+function trustBand() {
+  const registry = AGENCY_INFO.registry.verified
+    ? `<span class="trust-registry">Cadastur · ${escapeHtml(AGENCY_INFO.registry.value)}</span>`
+    : '';
+  return `<section class="trust-band" aria-label="Canais oficiais da Janu Turismo">
+    <span class="trust-official">${icon('check', 17)} Atendimento oficial</span>
+    ${registry}
+    <a href="${AGENCY_INFO.instagram}" target="_blank" rel="noopener noreferrer">${AGENCY_INFO.instagramHandle}</a>
+    <a href="${waLink('Olá, Janu Turismo! Vim pelo site. Gostaria de falar com a equipe.')}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+  </section>`;
+}
+
+function testimonialsSection() {
+  const testimonials = DEPOIMENTOS.filter(item => item.publicado && item.autorizado);
+  if (!testimonials.length) return '';
+  return `<section class="testimonials-section" aria-labelledby="testimonials-title">
+    <div class="section-heading testimonials-heading"><div><span class="section-kicker">QUEM VIAJOU COM A JANU</span><h2 id="testimonials-title">Depoimentos</h2></div></div>
+    <div class="testimonials-grid">${testimonials.map(item => `<article class="testimonial-card">
+      ${item.foto ? `<img src="${escapeHtml(item.foto)}" alt="" loading="lazy" decoding="async" />` : '<span class="testimonial-avatar" aria-hidden="true">J</span>'}
+      <div><p>“${escapeHtml(item.texto)}”</p><strong>${escapeHtml(item.nome || 'Cliente da Janu')}</strong><small>${escapeHtml(item.passeio)}</small></div>
+    </article>`).join('')}</div>
+  </section>`;
+}
+
+function siteFooter({ compact = false } = {}) {
+  const registry = AGENCY_INFO.registry.verified
+    ? `<span>Cadastur · ${escapeHtml(AGENCY_INFO.registry.value)}</span>`
+    : '';
+  return `<footer class="site-footer ${compact ? 'site-footer-compact' : ''}">
+    <div class="footer-brand"><img src="./assets/logo-janu.png" alt="Janu Turismo" loading="lazy" decoding="async" /><p>Viagens e passeios saindo do interior do Ceará.</p></div>
+    <div class="footer-links">
+      <a href="${AGENCY_INFO.instagram}" target="_blank" rel="noopener noreferrer">${AGENCY_INFO.instagramHandle}</a>
+      <a href="${waLink('Olá, Janu Turismo! Vim pelo site e gostaria de atendimento.')}" target="_blank" rel="noopener noreferrer">WhatsApp (88) 98873-7924</a>
+      <a href="/politica-reservas.html">Política de reservas</a>
+      <a href="/politica-cancelamento.html">Política de cancelamento</a>
+      ${registry}
+    </div>
+    <small>© ${new Date().getFullYear()} Janu Turismo.</small>
+  </footer>`;
+}
+
 function cardIncludedItems(trip) {
   const labels = new Map([
     ['bus', 'Transporte'],
@@ -348,7 +410,7 @@ function cardIncludedItems(trip) {
 function tripCard(trip, { special = false } = {}) {
   const included = cardIncludedItems(trip);
   return `<a class="trip-card ${special ? 'trip-card-special' : ''}" href="#/viagem/${encodeURIComponent(trip.id)}" aria-label="Ver detalhes de ${escapeHtml(trip.title)}">
-    <div class="trip-photo-link"><img src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" loading="lazy" decoding="async" />${special ? '<span class="special-ribbon">Especial</span>' : ''}<span class="photo-chip">${escapeHtml(trip.category)}</span></div>
+    <div class="trip-photo-link image-skeleton"><img src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" loading="lazy" decoding="async" />${special ? '<span class="special-ribbon">Especial</span>' : ''}<span class="photo-chip">${escapeHtml(trip.category)}</span></div>
     <div class="trip-card-body">
       <div class="trip-card-top"><span class="trip-kind">${escapeHtml(trip.kind)}</span><span class="trip-status" data-seats="${trip.id}">${seatsText(trip.id)}</span></div>
       <h3>${escapeHtml(trip.title)}</h3>
@@ -448,16 +510,20 @@ function renderHome() {
 
   app.innerHTML = `${header()}<main class="wrap page home-page" id="main">
     ${heroMarkup(publishedTrips.filter(trip => trip.image))}
+    ${trustBand()}
     <section class="discovery-panel" aria-label="Encontrar uma viagem">
       ${boardingSelector()}
       ${filterChips()}
     </section>
     ${specialSection}
     ${upcomingSection}
+    ${testimonialsSection()}
+    ${siteFooter()}
   </main>${bottomNav('home')}`;
   document.title = 'Janu Turismo | Próximas viagens';
   bindHero();
   bindDiscoveryControls({ home: true });
+  bindImageSkeletons();
   refreshInventory();
 }
 
@@ -480,6 +546,7 @@ function updateList() {
   });
   const selector = app.querySelector('[data-boarding-filter]');
   if (selector) selector.value = boardingCity;
+  bindImageSkeletons(grid);
 }
 
 function renderTrips() {
@@ -488,6 +555,7 @@ function renderTrips() {
     <label class="search-box">${icon('search', 23)}<span class="sr-only">Buscar destino</span><input id="search" type="search" autocomplete="off" placeholder="Buscar destino" aria-label="Buscar destino" /></label>
     <div class="trips-discovery">${boardingSelector()}${filterChips()}</div>
     <div id="all-trips" class="trip-grid" aria-live="polite"></div>
+    ${siteFooter({ compact: true })}
   </main>${bottomNav('trips')}`;
   app.querySelector('#search').value = query;
   app.querySelector('#search').addEventListener('input', event => { query = event.target.value; updateList(); });
@@ -580,6 +648,7 @@ function renderDetail(id) {
         ${detailSections(trip)}
         <a class="inline-contact" href="${waLink(`Olá, Janu Turismo! Tenho uma dúvida sobre ${trip.title}.`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Tirar uma dúvida com a Janu</a>
       </div>
+      ${siteFooter({ compact: true })}
     </main>
     <div class="booking-bar whatsapp-booking-bar"><div class="booking-inner"><div><small>Total</small><strong data-booking-total>${money(fareOptions[0]?.amount || 0)}</strong><span data-booking-people></span></div><button type="submit" form="trip-booking-config" id="whatsapp-reserve" data-trip="${trip.id}">${icon('whatsapp', 24)}<span>Reservar</span></button></div></div>`;
 
@@ -650,7 +719,7 @@ function validCpfClient(value) {
 }
 
 async function shareTrip(trip) {
-  const url = `${location.origin}${location.pathname}#/viagem/${trip.id}`;
+  const url = `${location.origin}/passeio/${encodeURIComponent(trip.id)}/`;
   try {
     if (navigator.share) await navigator.share({ title: `${trip.title} | Janu Turismo`, url });
     else { await navigator.clipboard.writeText(url); showToast('Link da viagem copiado'); }
@@ -669,7 +738,7 @@ function showToast(message) {
 
 function renderContact() {
   const greeting = waLink('Olá, Janu Turismo! Vim pelo site e gostaria de saber mais sobre as próximas viagens.');
-  app.innerHTML = `${header()}<main class="wrap page contact-page" id="main"><h1>Fale com a Janu</h1><p>Qualquer dúvida sobre viagens ou sobre a sua reserva? Nossa equipe pode ajudar.</p><a class="contact-button" href="${greeting}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 26)} Entrar em contato ${icon('arrowUpRight', 19)}</a><a class="back-to-trips" href="#/viagens">Ver próximas viagens ${icon('arrowRight', 18)}</a></main>${bottomNav('contact')}`;
+  app.innerHTML = `${header()}<main class="wrap page contact-page" id="main"><div class="contact-panel"><span class="section-kicker">ATENDIMENTO OFICIAL</span><h1>Fale com a Janu</h1><p>Qualquer dúvida sobre viagens ou sobre a sua reserva? Nossa equipe pode ajudar.</p><a class="contact-button" href="${greeting}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 26)} Entrar em contato ${icon('arrowUpRight', 19)}</a><a class="instagram-contact" href="${AGENCY_INFO.instagram}" target="_blank" rel="noopener noreferrer">${AGENCY_INFO.instagramHandle}</a></div><a class="back-to-trips" href="#/viagens">Ver próximas viagens ${icon('arrowRight', 18)}</a>${siteFooter({ compact: true })}</main>${bottomNav('contact')}`;
   document.title = 'Contato | Janu Turismo';
 }
 

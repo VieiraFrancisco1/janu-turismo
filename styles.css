@@ -1235,3 +1235,233 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
   font-size: 13px;
   font-weight: 800;
 }
+
+
+/* ETAPA E: confiança, acabamento e performance */
+:root {
+  --muted: #51677f;
+}
+.page {
+  padding-bottom: calc(118px + env(safe-area-inset-bottom));
+}
+.section-kicker,
+.special-kicker {
+  color: #875900;
+}
+.trip-subtitle,
+.list-intro p,
+.booking-config-heading p,
+.detail-lead p {
+  color: #526980;
+}
+.bottom-nav {
+  z-index: 90;
+  height: calc(78px + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -8px 26px rgba(12,35,67,.12);
+}
+.bottom-nav-inner {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.nav-item {
+  min-height: 54px;
+  font-size: 12px;
+}
+.trust-band {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px 17px 2px;
+  color: #425b75;
+  scrollbar-width: none;
+}
+.trust-band::-webkit-scrollbar { display: none; }
+.trust-band > * {
+  flex: 0 0 auto;
+}
+.trust-official,
+.trust-registry,
+.trust-band a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid #d6e3ef;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+}
+.trust-official {
+  color: #17633a;
+  background: #eef9f2;
+  border-color: #d1ecd9;
+}
+.trust-band a {
+  color: #0a5eb8;
+}
+.image-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e8eef4;
+}
+.image-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 25%, rgba(255,255,255,.62) 45%, transparent 65%);
+  transform: translateX(-100%);
+  animation: skeleton-slide 1.15s ease-in-out infinite;
+}
+.image-skeleton img {
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.image-skeleton.is-loaded::after { display: none; }
+.image-skeleton.is-loaded img { opacity: 1; }
+@keyframes skeleton-slide {
+  to { transform: translateX(100%); }
+}
+.testimonials-section {
+  padding: 30px 17px 2px;
+}
+.testimonials-grid {
+  display: grid;
+  gap: 10px;
+}
+.testimonial-card {
+  display: flex;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #dce7f1;
+  border-radius: 16px;
+  background: #fff;
+}
+.testimonial-card img,
+.testimonial-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.testimonial-avatar {
+  display: grid;
+  place-items: center;
+  background: #e9f4ff;
+  color: #0a5fbf;
+  font-weight: 900;
+}
+.testimonial-card p {
+  margin: 0 0 8px;
+  color: #405b75;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.testimonial-card strong,
+.testimonial-card small {
+  display: block;
+}
+.testimonial-card strong {
+  color: #123a65;
+  font-size: 13px;
+}
+.testimonial-card small {
+  margin-top: 2px;
+  color: #65798f;
+  font-size: 11px;
+}
+.site-footer {
+  margin: 34px 17px 0;
+  padding: 22px 18px 26px;
+  border-radius: 20px 20px 0 0;
+  background: #082a57;
+  color: #fff;
+}
+.site-footer-compact {
+  margin-top: 30px;
+}
+.footer-brand img {
+  width: 116px;
+  padding: 6px;
+  border-radius: 8px;
+  background: #fff;
+}
+.footer-brand p {
+  max-width: 420px;
+  margin: 10px 0 0;
+  color: #d7e5f4;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.footer-links {
+  display: grid;
+  gap: 8px;
+  margin-top: 17px;
+}
+.footer-links a,
+.footer-links span {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  color: #f4f8fc;
+  font-size: 12px;
+  font-weight: 700;
+}
+.footer-links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.site-footer > small {
+  display: block;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,.15);
+  color: #b7c8da;
+  font-size: 11px;
+}
+.instagram-contact {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  margin-top: 11px;
+  color: #fff;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.contact-page > .site-footer {
+  margin-inline: 0;
+}
+.trips-page > .site-footer {
+  margin-inline: 0;
+}
+.detail-page > .site-footer {
+  margin-inline: 18px;
+  margin-bottom: 20px;
+}
+@media (min-width: 700px) {
+  .trust-band {
+    padding-inline: 26px;
+  }
+  .testimonials-section {
+    padding-inline: 26px;
+  }
+  .testimonials-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .site-footer {
+    margin-inline: 26px;
+    padding: 26px;
+  }
+  .footer-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .image-skeleton::after {
+    animation: none;
+  }
+}
