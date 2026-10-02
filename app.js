@@ -1,3 +1,4 @@
+import { PASSEIOS_SEED, adaptarPasseioParaApp } from './catalogo.js';
 import { configured, authReady, currentUser, login, logout, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
@@ -6,93 +7,10 @@ let inventory = {};
 let inventoryReady = false;
 let lastBooking = null;
 
-let TRIPS = [
-  {
-    id: 'guaramiranga',
-    title: 'Guaramiranga',
-    subtitle: 'Natal de Luz 2026',
-    date: '19 e 20 de dezembro',
-    price: 480,
-    priceNote: 'individual',
-    couplePrice: 1000,
-    coupleNote: 'casal ou 2 pessoas',
-    category: 'Serra',
-    image: './assets/guaramiranga.webp',
-    imageAlt: 'Cenário natalino iluminado na serra',
-    kind: 'Viagem com hospedagem',
-    blurb: 'Dois dias de serra, natureza e clima de Natal para guardar na memória.',
-    includes: [
-      ['bus', 'Transporte de ida e volta'],
-      ['bed', 'Pousada no centro de Guaramiranga'],
-      ['coffee', 'Café da manhã no sábado e no domingo'],
-    ],
-    stops: [
-      ['Cabanas da Serra', ''],
-      ['Mosteiro dos Jesuítas', 'Entrada não inclusa'],
-      ['Cachoeira do Perigo', 'Entrada não inclusa'],
-      ['Parque de aventura Nosso Sítio', ''],
-    ],
-    notice: 'As entradas do Mosteiro dos Jesuítas e da Cachoeira do Perigo não estão inclusas.',
-    boarding: ['Tauá', 'Boa Viagem'],
-  },
-  {
-    id: 'sitio-do-bosco',
-    title: 'Sítio do Bosco & Ubajara',
-    subtitle: 'Natureza e aventura',
-    date: '17 e 18 de outubro',
-    price: 450,
-    priceNote: 'individual',
-    couplePrice: 950,
-    coupleNote: 'casal',
-    category: 'Serra',
-    image: './assets/sitio-do-bosco.webp',
-    imageAlt: 'Mirante com vista para as montanhas no Sítio do Bosco',
-    kind: 'Viagem com hospedagem',
-    blurb: 'Um fim de semana entre mirantes, paisagens da serra e experiências em Ubajara.',
-    includes: [
-      ['bus', 'Transporte de ida e volta'],
-      ['coffee', 'Café da manhã no sábado e no domingo'],
-      ['meal', 'Almoço no sábado e no domingo'],
-      ['ticket', 'Entrada no Sítio do Bosco'],
-      ['car', 'Passeio de bondinho'],
-      ['bed', 'Hospedagem em Ubajara'],
-    ],
-    stops: [
-      ['Sítio do Bosco', ''],
-      ['Ubajara', ''],
-    ],
-    notice: 'Para o passeio de bondinho, o anúncio informa doação de 3 kg de alimentos destinados a instituições locais.',
-    boarding: ['Tauá', 'Boa Viagem', 'Pedra Branca'],
-    payment: ['Pix', 'Cartão'],
-  },
-  {
-    id: 'jericoacoara',
-    title: 'Jericoacoara',
-    subtitle: 'Sol, lagoas e pôr do sol',
-    date: '06 de dezembro',
-    price: 320,
-    priceNote: 'individual',
-    category: 'Praia',
-    image: './assets/jericoacoara.webp',
-    imageAlt: 'Paisagem de praia com mar azul',
-    kind: 'Bate e volta',
-    blurb: 'Um dia para aproveitar lagoas, praia e o pôr do sol de Jeri.',
-    includes: [
-      ['bus', 'Transporte de ida e volta'],
-      ['coffee', 'Café da manhã'],
-      ['car', 'Transporte em veículo 4×4'],
-    ],
-    stops: [
-      ['Lagoa do Paraíso', ''],
-      ['Lagun Beach', ''],
-      ['Praia do Preá', ''],
-      ['Pôr do sol nas dunas da Lagoa do Amâncio', ''],
-    ],
-    boarding: ['Pedra Branca', 'Boa Viagem', 'Madalena', 'Livramento', 'Monsenhor Tabosa'],
-  },
-];
+let TRIPS = PASSEIOS_SEED.map(adaptarPasseioParaApp);
+
 const app = document.querySelector('#app');
-const starterTrips = TRIPS.map(trip => ({ ...trip, images: [], published: true }));
+const starterTrips = TRIPS.map(trip => ({ ...trip, published: trip.published !== false }));
 TRIPS = starterTrips.map(normalizeTrip);
 let filter = 'Todas';
 let query = '';
