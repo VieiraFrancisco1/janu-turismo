@@ -2155,3 +2155,57 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
     animation: none;
   }
 }
+
+
+/* HERO TITULO EM UMA LINHA + CTA PULSANTE */
+.home-page .hero-carousel .hero-slide .hero-copy {
+  width: 100%;
+  max-width: none;
+  padding-left: 42px;
+  padding-right: 42px;
+}
+.hero-carousel .hero-slide .hero-copy h2 {
+  display: block;
+  width: 100%;
+  max-width: none;
+  overflow: visible;
+  white-space: nowrap;
+  text-overflow: clip;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: initial;
+  font-size: clamp(19px, 5vw, 26px);
+  line-height: 1;
+  letter-spacing: -.04em;
+}
+.hero-carousel .hero-cta {
+  min-width: 94px;
+  min-height: 44px;
+  padding: 6px 10px;
+  gap: 5px;
+  border-radius: 11px;
+  font-size: 11px;
+  animation: hero-cta-breathe 1.7s ease-in-out infinite;
+  transform-origin: center;
+}
+.hero-carousel .hero-cta svg {
+  width: 14px;
+  height: 14px;
+}
+@keyframes hero-cta-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+@media (min-width: 700px) {
+  .home-page .hero-carousel .hero-slide .hero-copy {
+    padding-left: 56px;
+    padding-right: 56px;
+  }
+  .hero-carousel .hero-slide .hero-copy h2 {
+    font-size: clamp(24px, 3.3vw, 32px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-carousel .hero-cta {
+    animation: none;
+  }
+}
