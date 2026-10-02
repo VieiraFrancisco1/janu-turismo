@@ -49,3 +49,11 @@ A Home filtra viagens passadas pelas datas reais, permite escolher a cidade de e
 O painel `#/gestao` permite editar viagens, vagas e reservas, além de listar passageiros agrupados por embarque, copiar a lista, baixar CSV e abrir uma cobrança de saldo pelo WhatsApp.
 
 Dados provisórios ou ainda não validados devem permanecer marcados como **[CONFIRMAR]**.
+
+### Cadastro com nome e senha
+
+O cadastro solicita apenas nome de acesso e senha. O nome deve ser único; diferenças de maiúsculas e espaços extras são normalizadas. O login aceita esse nome e mantém o acesso por e-mail para contas antigas e por Google.
+
+`account-name.js` deriva um identificador interno estável do nome. A senha continua sendo administrada exclusivamente pelo Firebase Authentication; ela não é armazenada em documentos do Firestore. O campo interno `profiles.email` corresponde ao identificador do token para manter a compatibilidade com as regras existentes, e as telas exibem o nome de acesso.
+
+Contas criadas sem endereço de e-mail não oferecem recuperação automática por e-mail. O botão de recuperação informa essa limitação. A configuração pública em `firebase-config.js` corresponde ao aplicativo do site oficial; nenhuma chave administrativa está incluída.

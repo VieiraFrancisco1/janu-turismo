@@ -2800,3 +2800,87 @@ html::-webkit-scrollbar, .info-screen::-webkit-scrollbar { width: 0; }
 body.info-open .scroll-guide-arrow, body.menu-open .scroll-guide-arrow, body:has(dialog[open]) .scroll-guide-arrow { bottom: 16px; }
 @keyframes scroll-hint-bob { 0%,100% { transform: translateY(-4px); } 50% { transform: translateY(5px); } }
 @media (prefers-reduced-motion: reduce) { .scroll-guide-arrow svg { animation: none; } }
+
+/* Cards da página inicial: preço e inclusos em linhas únicas. */
+.home-page .trip-price {
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  gap: 5px;
+  width: 100%;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+.home-page .trip-price > * { order: 0; width: auto; flex: 0 0 auto; }
+.home-page .trip-price small,
+.home-page .trip-price em { font-size: 10px; line-height: 1.2; }
+.home-page .trip-price strong { font-size: clamp(21px, 5.6vw, 24px); line-height: 1.1; }
+.home-page .trip-included { flex-wrap: nowrap; gap: 4px; margin: 7px 0; }
+.home-page .trip-included span { padding: 3px 2px; gap: 2px; font-size: clamp(8px, 2.15vw, 9px); white-space: nowrap; }
+.home-page .trip-included svg { width: 10px; height: 10px; flex: 0 0 auto; }
+.home-page .trip-photo-link,
+.home-page .trip-card-body { min-height: 166px; }
+.home-page .trip-card h3 { margin-top: 6px; }
+@media (max-width: 360px) {
+  .home-page .trip-photo-link { flex-basis: 29%; }
+}
+.home-page .trip-price em { display: none; }
+.home-page .trip-card-footer { margin-top: 0; }
+.home-page .trip-card-body { min-height: 0; }
+.home-page .trip-photo-link img { position: absolute; inset: 0; }
+
+/* Total da reserva com separação entre valor e explicação. */
+.booking-total-card { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; align-items: center; }
+.booking-total-card > span { min-width: 0; line-height: 1.4; }
+.booking-total-card > strong { display: block; margin: 0; font-size: clamp(22px, 6.5vw, 28px); line-height: 1.2; white-space: nowrap; }
+.booking-total-card > small { display: block; margin: 0; line-height: 1.5; }
+.whatsapp-booking-bar .booking-inner { gap: 10px; align-items: center; }
+.whatsapp-booking-bar .booking-inner > div { display: grid; gap: 3px; flex: 0 0 auto; max-width: 55%; }
+.whatsapp-booking-bar .booking-inner > div > small { margin: 0; line-height: 1.2; }
+.whatsapp-booking-bar .booking-inner strong { margin: 0; font-size: clamp(22px, 6.5vw, 30px); line-height: 1.2; }
+.whatsapp-booking-bar .booking-inner [data-booking-people] { margin: 0; line-height: 1.4; }
+.whatsapp-booking-bar .booking-inner button { min-width: 0; padding: 10px 14px; }
+
+/* Mais contraste e profundidade nos cards da página inicial. */
+body:has(.home-page) { background: #e7edf4; }
+.home-page .featured { background: #e7edf4; }
+.home-page .trip-card { background: #fff; box-shadow: 0 7px 19px #082a5717, 0 2px 5px #082a570d; }
+
+/* Login e cadastro ocupam o espaço disponível acima da navegação. */
+.reservations-login-page .bookings-intro > p,
+.reservations-login-page > .inline-contact { display: none; }
+.reservations-login-page .bookings-list { margin: 0; }
+.profile-page .auth-heading { font-size: 19px; }
+.auth-panel [hidden] { display: none !important; }
+
+/* Contato com canais equivalentes e painel de apresentação compacto. */
+.contact-page { padding: 16px 12px calc(88px + env(safe-area-inset-bottom)); max-width: 650px; }
+.contact-page .contact-panel { padding: 20px; border-radius: 19px; }
+.contact-page .contact-panel h1 { margin: 8px 0; font-size: clamp(26px, 7vw, 34px); }
+.contact-page .contact-panel p { margin: 0; font-size: 14px; line-height: 1.5; }
+.contact-page .section-kicker { font-size: 10px; }
+.contact-channels { display: grid; gap: 12px; margin-top: 16px; }
+.contact-channel { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 15px; color: #fff; box-shadow: 0 5px 14px #082a5714; text-decoration: none; }
+.contact-channel > span { flex: 1; min-width: 0; }
+.contact-channel strong, .contact-channel small { display: block; }
+.contact-channel strong { font-size: 17px; }
+.contact-channel small { margin-top: 3px; font-size: 12px; color: #ffffffdf; }
+.contact-channel svg { flex-shrink: 0; }
+.contact-whatsapp { background: #089d4d; }
+.contact-instagram { background: linear-gradient(115deg, #6c3cbe, #c6377b); }
+.contact-page .back-to-trips { margin: 20px 0 0; font-size: 14px; }
+
+/* Título curto e separador amarelo antes da busca. */
+.trips-page .list-intro { padding: 4px 2px 13px; margin: 0 0 16px; border-radius: 0; background: transparent; border-bottom: 2px solid #f4c632; box-shadow: none; }
+.trips-page .list-intro h1 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 28px; line-height: 1.2; color: #082a57; }
+.title-umbrella { width: 25px; height: 28px; color: #efb923; }
+.filter-strip { position: relative; min-width: 0; }
+.filter-strip .discovery-filters { padding-right: 35px; }
+.filter-scroll-hint { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 30px; height: 40px; padding: 0; border: 0; background: transparent; color: #1269b1; opacity: .65; }
+.filter-scroll-hint[hidden] { display: none; }
+.filter-scroll-hint svg { animation: filter-hint-sway 2.8s ease-in-out infinite; }
+@keyframes filter-hint-sway { 0%,100% { transform: translateX(-3px); } 50% { transform: translateX(3px); } }
+.scroll-guide-arrow { opacity: .65; }
+.detail-page-whatsapp { padding-bottom: calc(116px + env(safe-area-inset-bottom)); }
+.detail-page-whatsapp .detail-body { padding-bottom: 12px; }
+@media (prefers-reduced-motion: reduce) { .filter-scroll-hint svg { animation: none; } }

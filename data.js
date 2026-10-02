@@ -2,6 +2,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where, orderBy, limit, runTransaction } from 'firebase/firestore';
 import { firebaseConfig } from './firebase-config.js';
+import { nameAccountEmail, isNameAccount, accountLabel } from './account-name.js';
+export { accountLabel } from './account-name.js';
 
 export const configured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
 const app = configured ? initializeApp(firebaseConfig) : null;
@@ -37,27 +39,32 @@ function validCpf(value) {
     return Number(value[length]) === (check === 10 ? 0 : check);
   });
 }
-export async function login(email, password, register = false, name = '') {
+export async function login(identifier, password, register = false, name = '') {
   requireSetup();
+  const value = String(identifier || '').trim();
+  const byName = register || !value.includes('@');
+  const email = byName ? await nameAccountEmail(value) : value;
   const fn = register ? createUserWithEmailAndPassword : signInWithEmailAndPassword;
   try {
     const user = (await fn(auth, email.trim(), password)).user;
     if (register) await updateProfile(user, { displayName: name.trim().slice(0, 80) });
-    await setDoc(doc(db, 'profiles', user.uid), { email: user.email.toLowerCase(), name: (user.displayName || name.trim() || user.email.split('@')[0]).slice(0, 80) });
+    await setDoc(doc(db, 'profiles', user.uid), { email: user.email.toLowerCase(), name: (user.displayName || name.trim() || accountLabel(user)).slice(0, 80) });
     return user;
   }
   catch (error) {
-    if (error.code === 'auth/email-already-in-use') throw new Error('Este e-mail já tem conta. Escolha Entrar.');
+    if (error.code === 'auth/email-already-in-use') throw new Error(byName ? 'Este nome já tem conta. Entre ou escolha outro nome de acesso.' : 'Este e-mail já tem conta. Escolha Entrar.');
     if (error.code === 'auth/weak-password') throw new Error('Use uma senha com pelo menos 6 caracteres.');
     if (error.code === 'auth/invalid-email') throw new Error('Confira o endereço de e-mail.');
     if (error.code === 'permission-denied') throw new Error('Conta criada, mas o perfil não pôde ser salvo. Atualize e entre novamente.');
-    throw new Error('Não foi possível entrar. Confira e-mail e senha.');
+    if (error.code === 'auth/too-many-requests') throw new Error('Muitas tentativas. Aguarde um pouco e tente novamente.');
+    throw new Error('Não foi possível entrar. Confira seu nome ou e-mail e a senha.');
   }
 }
 export async function resetPassword(email) {
   requireSetup();
   const value = String(email || '').trim();
   if (!value) throw new Error('Informe seu e-mail para recuperar a senha.');
+  if (!value.includes('@') || isNameAccount({ email: value })) throw new Error('Contas criadas com nome não têm recuperação por e-mail. Fale com a Janu para obter ajuda.');
   try {
     await sendPasswordResetEmail(auth, value);
   } catch (error) {
@@ -121,7 +128,7 @@ export async function createBooking(input) {
   const seats = Number(input.seats);
   if (!validTripId(input.tripId) || !validCpf(cpf) || phone.length < 10 || phone.length > 11 ||
       !Number.isInteger(seats) || seats < 1 || seats > 10 || !['pix', 'cartao'].includes(input.payment) ||
-      !input.firstName?.trim() || !input.lastName?.trim() || input.consent !== true) throw new Error('Confira os dados da reserva.');
+      !input.firstName?.trim() || !input.lastName?.trim()) throw new Error('Confira os dados da reserva.');
   const id = `JT-${Array.from(crypto.getRandomValues(new Uint8Array(5)), n => n.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
   const tripRef = doc(db, 'trip_inventory', input.tripId);
   const bookingRef = doc(db, 'bookings', id);

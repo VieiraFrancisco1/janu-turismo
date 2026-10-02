@@ -5,7 +5,7 @@ export function initScrollGuide() {
   arrow.type = 'button';
   arrow.hidden = true;
   arrow.setAttribute('aria-label', 'Rolar para ver mais conteúdo');
-  arrow.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v16m-7-6 7 7 7-7"/></svg>';
+  arrow.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 9 7 7 7-7"/></svg>';
   const track = document.createElement('div');
   track.className = 'scroll-guide-track';
   track.hidden = true;
@@ -43,8 +43,8 @@ export function initScrollGuide() {
     arrow.hidden = !more || !idle || dragging;
     track.hidden = max <= 8;
     const viewport = window.visualViewport?.height || window.innerHeight;
-    const header = page ? document.querySelector('.site-header') : target.querySelector('.info-screen-head');
-    const nav = page ? document.querySelector('.bottom-nav') : null;
+    const header = page ? document.querySelector('.site-header, .detail-header') : target.querySelector('.info-screen-head');
+    const nav = page ? document.querySelector('.bottom-nav, .booking-bar') : null;
     const start = Math.max(8, header?.getBoundingClientRect().bottom || 8) + 6;
     const end = nav ? Math.min(viewport, nav.getBoundingClientRect().top) - 8 : viewport - 8;
     const length = Math.max(40, end - start);

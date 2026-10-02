@@ -1,6 +1,6 @@
 import { initScrollGuide } from './scroll-guide.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
-import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
+import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
 
@@ -224,8 +224,8 @@ function authPanel(title = 'Entre para continuar') {
     <h2 class="auth-heading">${escapeHtml(title)}</h2>
     <p class="auth-description">Entre para acompanhar suas reservas em qualquer aparelho.</p>
     <form class="auth-form">
-      <label class="register-name" hidden>Nome<input name="name" autocomplete="name" maxlength="80" placeholder="Seu nome" disabled /></label>
-      <label>E-mail<input type="email" name="email" autocomplete="email" placeholder="seu@email.com" required /></label>
+      <label class="register-name" hidden>Nome<input name="name" autocomplete="username" minlength="2" maxlength="80" placeholder="Escolha seu nome de acesso" disabled /></label>
+      <label class="login-identifier" data-login-only>Nome ou e-mail<input name="email" autocomplete="username" maxlength="254" placeholder="Seu nome de acesso ou e-mail" required /></label>
       <label>Senha<input type="password" name="password" autocomplete="current-password" minlength="6" placeholder="Sua senha" required /></label>
       <button class="forgot-password" type="button" data-login-only>Esqueci minha senha</button>
       <p class="form-error" role="alert" hidden></p>
@@ -254,12 +254,14 @@ function bindAuth(container, onSuccess) {
     nameField.hidden = !register;
     nameInput.disabled = !register;
     nameInput.required = register;
+    form.elements.email.disabled = register;
+    form.elements.email.required = !register;
     password.autocomplete = register ? 'new-password' : 'current-password';
     password.value = '';
     error.hidden = true;
     panel.querySelector('.auth-heading').textContent = register ? 'Crie sua conta' : title;
     panel.querySelector('.auth-description').textContent = register
-      ? 'Cadastre seus dados para fazer reservas e consultá-las depois.'
+      ? 'Escolha um nome único e uma senha para acompanhar suas reservas.'
       : 'Entre para acompanhar suas reservas em qualquer aparelho.';
     form.querySelector('.auth-submit').textContent = register ? 'Criar conta' : 'Entrar';
     switchButton.innerHTML = register ? 'Já tem conta? <strong>Entrar</strong>' : 'Ainda não tem conta? <strong>Criar conta</strong>';
@@ -277,8 +279,8 @@ function bindAuth(container, onSuccess) {
   resetButton?.addEventListener('click', async () => {
     const email = String(form.elements.email.value || '').trim();
     error.hidden = true;
-    if (!email) {
-      error.textContent = 'Digite seu e-mail acima para recuperar a senha.';
+    if (!email.includes('@')) {
+      error.textContent = 'Para contas com e-mail, digite-o acima. Contas criadas com nome não têm recuperação por e-mail; fale com a Janu para obter ajuda.';
       error.hidden = false;
       form.elements.email.focus();
       return;
@@ -319,7 +321,7 @@ function bindAuth(container, onSuccess) {
     error.hidden = true;
     try {
       const data = new FormData(form);
-      await login(String(data.get('email')), String(data.get('password')), register, String(data.get('name') || ''));
+      await login(String(register ? data.get('name') : data.get('email')), String(data.get('password')), register, String(data.get('name') || ''));
       onSuccess();
     } catch (problem) {
       error.textContent = problem.message;
@@ -508,7 +510,24 @@ function boardingSelector() {
 }
 
 function filterChips() {
-  return `<div class="filters discovery-filters" role="group" aria-label="Filtrar viagens">${FILTER_OPTIONS.map(name => `<button type="button" data-filter="${escapeHtml(name)}" class="${name === filter ? 'selected' : ''}" aria-pressed="${name === filter}">${escapeHtml(name)}</button>`).join('')}</div>`;
+  return `<div class="filter-strip"><div class="filters discovery-filters" role="group" aria-label="Filtrar viagens">${FILTER_OPTIONS.map(name => `<button type="button" data-filter="${escapeHtml(name)}" class="${name === filter ? 'selected' : ''}" aria-pressed="${name === filter}">${escapeHtml(name)}</button>`).join('')}</div><button class="filter-scroll-hint" type="button" aria-label="Ver mais categorias" hidden>${icon('arrowRight', 22)}</button></div>`;
+}
+
+function bindFilterHint() {
+  const strip = app.querySelector('.filter-strip');
+  if (!strip) return;
+  const row = strip.querySelector('.filters');
+  const hint = strip.querySelector('.filter-scroll-hint');
+  const update = () => { hint.hidden = row.scrollWidth - row.clientWidth - row.scrollLeft <= 6; };
+  row.addEventListener('scroll', update, { passive: true });
+  hint.addEventListener('click', () => row.scrollBy({ left: row.clientWidth * .65, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }));
+  const resize = new ResizeObserver(update);
+  resize.observe(row);
+  const observer = new MutationObserver(() => {
+    if (!strip.isConnected) { resize.disconnect(); observer.disconnect(); }
+  });
+  observer.observe(app, { childList: true });
+  update();
 }
 
 function boardingSummary(trip) {
@@ -769,7 +788,7 @@ function updateList() {
 
 function renderTrips() {
   app.innerHTML = `${header()}<main class="wrap page trips-page" id="main">
-    <div class="list-intro"><h1>Viagens</h1><p>Escolha seu próximo destino</p></div>
+    <div class="list-intro"><h1>Viagens <svg class="title-umbrella" viewBox="0 0 24 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path fill="currentColor" d="M2 12a10 10 0 0 1 20 0c-2-2-4-2-6 0-2-2-6-2-8 0-2-2-4-2-6 0Z"/><path d="M12 1v1m0 10v10a3 3 0 0 0 6 0"/></svg></h1></div>
     <label class="search-box">${icon('search', 23)}<span class="sr-only">Buscar destino</span><input id="search" type="search" autocomplete="off" placeholder="Buscar destino" aria-label="Buscar destino" /></label>
     <div class="trips-discovery">${boardingSelector()}${filterChips()}</div>
     <div id="all-trips" class="trip-grid" aria-live="polite"></div>
@@ -778,6 +797,7 @@ function renderTrips() {
   app.querySelector('#search').value = query;
   app.querySelector('#search').addEventListener('input', event => { query = event.target.value; updateList(); });
   bindDiscoveryControls();
+  bindFilterHint();
   updateList();
   document.title = 'Viagens | Janu Turismo';
   refreshInventory();
@@ -905,17 +925,14 @@ function renderDetail(id) {
             </div>
             <div class="booking-total-card"><span>💰 Valor total</span><strong data-config-total>${money(fareOptions[0]?.amount || 0)}</strong><small>O valor considera a opção e a quantidade escolhidas.</small></div>
             <div class="payment-calculator"><h3>💳 Formas de pagamento</h3><div data-payment-calculator></div><label class="payment-choice">Como pretende pagar?<select name="payment" required><option value="pix">Pix</option><option value="cartao">Cartão</option></select></label></div>
-            <label class="policy-check"><input type="checkbox" name="policies" required /><span>Li e aceito as <a href="#/politicas" target="_blank" rel="noopener">políticas de reserva</a> e <a href="#/politicas" target="_blank" rel="noopener">cancelamento</a>.</span></label>
-            <label class="policy-check"><input type="checkbox" name="consent" required /><span>Autorizo o uso dos meus dados para registrar e administrar esta reserva.</span></label>
             <p class="form-error booking-form-error" hidden></p>
             <a class="waitlist-cta" data-waitlist hidden href="${waLink(`Olá! Quero entrar na lista de espera do passeio ${trip.title} (${trip.date}). Podem me avisar se surgir vaga?`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Entrar na lista de espera</a>
           </form>
         </section>
 
         ${detailSections(trip)}
-        <a class="inline-contact" href="${waLink(`Olá, Janu Turismo! Tenho uma dúvida sobre ${trip.title} (${trip.date}).`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Tirar uma dúvida com a Janu</a>
       </div>
-      ${siteFooter({ compact: true })}
+      
     </main>
     <div class="booking-bar whatsapp-booking-bar"><div class="booking-inner"><div><small>Total</small><strong data-booking-total>${money(fareOptions[0]?.amount || 0)}</strong><span data-booking-people></span></div><button type="submit" form="trip-booking-config" id="whatsapp-reserve" data-trip="${trip.id}">${icon('ticket', 23)}<span>Reservar</span></button></div></div>`;
 
@@ -997,7 +1014,6 @@ function renderDetail(id) {
         payment: String(data.get('payment') || 'pix'),
         boarding: String(data.get('boarding') || '').trim(),
         fareLabel: fare.label,
-        consent: data.get('consent') === 'on' && data.get('policies') === 'on',
       });
 
       lastBooking = { booking, token: booking.id };
@@ -1218,7 +1234,7 @@ function renderPolicies() {
       <p>Para solicitar correção ou exclusão de dados pessoais, entre em contato com a Janu Turismo pelo WhatsApp <a href="${waLink('Olá, Janu Turismo! Gostaria de solicitar correção ou exclusão dos meus dados pessoais.')}" target="_blank" rel="noopener noreferrer">(88) 98873-7924</a>.</p>
     </section>
 
-    ${siteFooter({ compact: true })}
+    
   </main>${bottomNav('contact')}`;
   app.querySelectorAll('[data-policy-target]').forEach(button => {
     button.addEventListener('click', () => {
@@ -1230,7 +1246,13 @@ function renderPolicies() {
 
 function renderContact() {
   const greeting = waLink('Olá, Janu Turismo! Vim pelo site e gostaria de saber mais sobre as próximas viagens.');
-  app.innerHTML = `${header()}<main class="wrap page contact-page" id="main"><div class="contact-panel"><span class="section-kicker">ATENDIMENTO OFICIAL</span><h1>Fale com a Janu</h1><p>Qualquer dúvida sobre viagens ou sobre a sua reserva? Nossa equipe pode ajudar.</p><a class="contact-button" href="${greeting}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 26)} Entrar em contato ${icon('arrowUpRight', 19)}</a><a class="instagram-contact" href="${AGENCY_INFO.instagram}" target="_blank" rel="noopener noreferrer">${AGENCY_INFO.instagramHandle}</a></div><a class="back-to-trips" href="#/viagens">Ver próximas viagens ${icon('arrowRight', 18)}</a>${siteFooter({ compact: true })}</main>${bottomNav('contact')}`;
+  app.innerHTML = `${header()}<main class="wrap page contact-page" id="main">
+    <div class="contact-panel"><span class="section-kicker">ATENDIMENTO OFICIAL</span><h1>Fale com a Janu</h1><p>Tem dúvidas sobre viagens ou reservas? Nossa equipe pode ajudar.</p></div>
+    <div class="contact-channels">
+      <a class="contact-channel contact-whatsapp" href="${greeting}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 25)}<span><strong>WhatsApp</strong><small>Converse com nossa equipe</small></span>${icon('arrowUpRight', 19)}</a>
+      <a class="contact-channel contact-instagram" href="${AGENCY_INFO.instagram}" target="_blank" rel="noopener noreferrer">${icon('instagram', 25)}<span><strong>Instagram</strong><small>${AGENCY_INFO.instagramHandle}</small></span>${icon('arrowUpRight', 19)}</a>
+    </div><a class="back-to-trips" href="#/viagens">Ver próximas viagens ${icon('arrowRight', 18)}</a>
+  </main>${bottomNav('contact')}`;
   document.title = 'Contato | Janu Turismo';
 }
 
@@ -1300,12 +1322,14 @@ async function renderMyReservations() {
   document.title = 'Minhas reservas | Janu Turismo';
   const list = app.querySelector('#bookings-list');
   await authReady;
+  if (!list.isConnected) return;
   if (!currentUser()) {
+    list.closest('main').classList.add('profile-page', 'reservations-login-page');
     list.innerHTML = authPanel('Acesse suas reservas');
     bindAuth(list, renderMyReservations);
     return;
   }
-  list.innerHTML = `<p class="signed-account">Conta: ${escapeHtml(currentUser().email)} <button id="sign-out" type="button">Sair</button></p>`;
+  list.innerHTML = `<p class="signed-account">Conta: ${escapeHtml(accountLabel(currentUser()))} <button id="sign-out" type="button">Sair</button></p>`;
   list.querySelector('#sign-out').addEventListener('click', async () => { await logout(); renderMyReservations(); });
   const resultsHolder = document.createElement('div');
   list.append(resultsHolder);
@@ -1329,7 +1353,7 @@ function renderProfile() {
   authReady.then(async () => {
     if (!holder.isConnected) return;
     if (!currentUser()) { holder.innerHTML = authPanel('Entre ou crie sua conta'); bindAuth(holder, renderProfile); return; }
-    holder.innerHTML = `<div class="profile-card">${icon('user', 34)}<h2>${escapeHtml(currentUser().displayName || currentUser().email.split('@')[0])}</h2><p>${escapeHtml(currentUser().email)}</p><a href="#/reservas">Minhas reservas ${icon('arrowRight', 18)}</a><div id="agency-link"></div><button id="profile-logout" type="button">Sair da conta</button></div>`;
+    holder.innerHTML = `<div class="profile-card">${icon('user', 34)}<h2>${escapeHtml(currentUser().displayName || currentUser().email.split('@')[0])}</h2><p>${escapeHtml(accountLabel(currentUser()))}</p><a href="#/reservas">Minhas reservas ${icon('arrowRight', 18)}</a><div id="agency-link"></div><button id="profile-logout" type="button">Sair da conta</button></div>`;
     holder.querySelector('#profile-logout').addEventListener('click', async () => { await logout(); renderProfile(); });
     try { await adminFetch(); if (holder.isConnected) holder.querySelector('#agency-link').innerHTML = '<a href="#/gestao">Área da Janu Turismo →</a>'; } catch { /* conta de cliente */ }
   });
