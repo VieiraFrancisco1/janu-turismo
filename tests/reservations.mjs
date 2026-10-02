@@ -23,7 +23,7 @@ async function dataModule(db, uid) {
   const plain = value => Array.isArray(value) ? value.map(plain) : value && value.constructor?.name === 'Object' ? Object.fromEntries(Object.entries(value).map(([key, child]) => [key, plain(child)])) : value;
   const modules = {
     'firebase/app': synthetic({ initializeApp: () => ({}) }),
-    'firebase/auth': synthetic(Object.fromEntries(['getAuth', 'onAuthStateChanged', 'createUserWithEmailAndPassword', 'signInWithEmailAndPassword', 'signOut', 'updateProfile', 'sendPasswordResetEmail', 'GoogleAuthProvider', 'signInWithPopup'].map(key => [key, key === 'getAuth' ? () => auth : key === 'onAuthStateChanged' ? (_, callback) => callback(auth.currentUser) : () => {}]))),
+    'firebase/auth': synthetic(Object.fromEntries(['getAuth', 'onAuthStateChanged', 'createUserWithEmailAndPassword', 'signInWithEmailAndPassword', 'signOut', 'updateProfile', 'deleteUser', 'sendPasswordResetEmail', 'GoogleAuthProvider', 'signInWithPopup'].map(key => [key, key === 'getAuth' ? () => auth : key === 'onAuthStateChanged' ? (_, callback) => callback(auth.currentUser) : () => {}]))),
     'firebase/firestore': synthetic({ ...firestore, getFirestore: () => db,
       setDoc: (ref, data, ...rest) => firestore.setDoc(ref, plain(data), ...rest),
       runTransaction: (database, callback) => firestore.runTransaction(database, tx => callback({
