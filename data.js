@@ -48,6 +48,7 @@ export async function login(identifier, password, register = false, name = '') {
   const value = String(identifier || '').trim();
   const normalized = normalizeLoginIdentifier(value);
   const byName = register || !normalized.includes('@');
+  if (register && /^\d{10,11}$/.test(normalized)) throw new Error('Cadastro por telefone é reservado ao acesso da agência. Escolha um nome de acesso.');
   const email = register ? await nameAccountEmail(normalized) : await loginIdentifierEmail(normalized);
   const fn = register ? createUserWithEmailAndPassword : signInWithEmailAndPassword;
   try {
@@ -214,6 +215,12 @@ export function watchMyBookings(onChange, onError) {
   return reservationStream(query(collection(db, 'bookings'), where('uid', '==', user.uid)), snap => snap.docs.map(item => item.data()), items => {
     onChange(items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
   }, onError);
+}
+
+export async function isProvisionedAdminAccount() {
+  const user = requireUser();
+  const snap = await getDoc(doc(db, 'admin_users', user.uid));
+  return snap.exists();
 }
 
 export async function adminCreatePhoneAccount({ phone, password }) {
