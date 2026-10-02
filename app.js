@@ -144,9 +144,22 @@ function updateAvailabilityUI() {
   document.querySelectorAll('[data-hero-offer]').forEach(el => {
     const trip = TRIPS.find(item => item.id === el.dataset.heroOffer);
     if (!trip) return;
+    el.textContent = `A partir de ${money(trip.price)}`;
+  });
+
+  document.querySelectorAll('[data-hero-vacancies]').forEach(el => {
+    const trip = TRIPS.find(item => item.id === el.dataset.heroVacancies);
+    if (!trip) return;
     const status = tripAvailability(trip.id);
-    el.textContent = status.key === 'last-spots' ? status.text : `A partir de ${money(trip.price)}`;
-    el.classList.toggle('is-urgent', status.key === 'last-spots');
+    if (['open', 'last-spots', 'sold-out', 'closed', 'date-pending', 'preparing'].includes(status.key)) {
+      el.textContent = status.text;
+      el.classList.remove('is-demo');
+      return;
+    }
+    const examples = [12, 8, 15, 10, 6];
+    const seed = [...trip.id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    el.textContent = `${examples[seed % examples.length]} vagas · exemplo`;
+    el.classList.add('is-demo');
   });
 
   document.querySelectorAll('[data-minimum-progress]').forEach(holder => {
@@ -581,8 +594,11 @@ function heroMarkup(trips) {
         <span class="hero-eyebrow">${escapeHtml(trip.category)} <i></i> ${escapeHtml(trip.date)}</span>
         <h2>${escapeHtml(trip.title)}</h2>
         ${trip.subtitle ? `<p class="hero-subtitle">${escapeHtml(trip.subtitle)}</p>` : ''}
-        <p class="hero-offer" data-hero-offer="${trip.id}">A partir de ${money(trip.price)}</p>
-        <a class="hero-cta" href="#/viagem/${encodeURIComponent(trip.id)}">Conferir ${icon('arrowRight', 18)}</a>
+        <div class="hero-info-row">
+          <p class="hero-offer" data-hero-offer="${trip.id}">A partir de ${money(trip.price)}</p>
+          <p class="hero-vacancies" data-hero-vacancies="${trip.id}">Vagas a confirmar</p>
+        </div>
+        <a class="hero-cta" href="#/viagem/${encodeURIComponent(trip.id)}"><span>Conferir</span> ${icon('arrowRight', 18)}</a>
       </div>
     </article>`).join('')}</div>
     ${multiple ? `<button class="hero-arrow hero-arrow-prev" type="button" data-hero-prev aria-label="Viagem anterior">${icon('arrowLeft', 22)}</button>
@@ -633,14 +649,14 @@ function bindHero() {
   const startAutoplay = () => {
     stopAutoplay();
     if (reducedMotion || slides.length <= 1) return;
-    autoplayTimer = setInterval(() => show(current + 1), 6000);
+    autoplayTimer = setInterval(() => show(current + 1), 4000);
   };
 
   const pauseTemporarily = () => {
     stopAutoplay();
     if (resumeTimer) clearTimeout(resumeTimer);
     if (!reducedMotion && slides.length > 1) {
-      resumeTimer = setTimeout(startAutoplay, 12000);
+      resumeTimer = setTimeout(startAutoplay, 8000);
     }
   };
 
