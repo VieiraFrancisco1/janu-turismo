@@ -12,6 +12,7 @@ const trip = prepareCatalog({ id: 'teste-viagem', title: 'Viagem de teste', date
 const customer = environment.authenticatedContext('customer', { email: 'customer@example.invalid' }).firestore();
 const other = environment.authenticatedContext('other', { email: 'other@example.invalid' }).firestore();
 const agency = environment.authenticatedContext('agency').firestore();
+const janu = environment.authenticatedContext('janu-admin').firestore();
 const anonymous = environment.unauthenticatedContext().firestore();
 async function dataModule(db, uid) {
   const context = vm.createContext({ console, crypto, TextEncoder, setTimeout, clearTimeout, Date });
@@ -62,6 +63,10 @@ try {
   await environment.clearFirestore(); await seed();
   const client = await dataModule(customer, 'customer');
   const admin = await dataModule(agency, 'agency');
+  await assertFails(setDoc(doc(customer, 'admin_users', 'fake-admin'), { phone: '8899999999', name: 'Janu Turismo', createdBy: 'customer', createdAt: serverTimestamp() }));
+  await setDoc(doc(agency, 'admin_users', 'janu-admin'), { phone: '8888737924', name: 'Janu Turismo', createdBy: 'agency', createdAt: serverTimestamp() });
+  const januAdmin = await dataModule(janu, 'janu-admin');
+  assert.ok((await januAdmin.adminGet([trip.id])).trips.length >= 1);
   const saved = (await client.createBooking(input)).booking;
   assert.equal(saved.tripEndDate, trip.endDate); assert.equal(saved.expiresAt.toMillis(), bookingClosesAt(trip).getTime());
   assert.equal(saved.totalCents, 160000); assert.equal(saved.seats, 4); assert.equal(saved.seatsHeld, false);
@@ -137,6 +142,7 @@ try {
   await assert.rejects(client.getBooking('JT-0000000008'), /terminou/);
   console.log('PASS: horário Ceará, prazo pela data final, ocultação em cliente/gestão e exclusão segura com liberação única de vagas.');
   console.log('PASS: salvamento, preço validado, privacidade, repetição segura, limite simultâneo e confirmação/cancelamento.');
+  console.log('PASS: somente o admin principal provisiona o acesso da Janu e o novo admin recebe permissões de gestão.');
 } finally {
   await environment.cleanup();
 }

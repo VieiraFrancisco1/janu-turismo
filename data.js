@@ -1,16 +1,18 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, deleteUser, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where, orderBy, limit, runTransaction, serverTimestamp, Timestamp, onSnapshot } from 'firebase/firestore';
 import { bookingId, bookingClosesAt, prepareCatalog, catalogForApp, bookingSnapshot } from './booking-model.js';
 import { reservationDeadline, reservationVisible, watchDeadlines, tripDeadline } from './reservation-lifecycle.js';
 import { firebaseConfig } from './firebase-config.js';
-import { nameAccountEmail, isNameAccount, accountLabel } from './account-name.js';
+import { nameAccountEmail, loginIdentifierEmail, normalizeLoginIdentifier, isNameAccount, accountLabel } from './account-name.js';
 export { accountLabel } from './account-name.js';
 
 export const configured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
 const app = configured ? initializeApp(firebaseConfig) : null;
 const auth = app ? getAuth(app) : null;
 const db = app ? getFirestore(app) : null;
+const adminProvisionApp = configured ? initializeApp(firebaseConfig, 'janu-admin-provision') : null;
+const adminProvisionAuth = adminProvisionApp ? getAuth(adminProvisionApp) : null;
 export const authReady = auth ? new Promise(resolve => onAuthStateChanged(auth, resolve, resolve)) : Promise.resolve(null);
 export const currentUser = () => auth?.currentUser;
 
@@ -44,8 +46,10 @@ function validCpf(value) {
 export async function login(identifier, password, register = false, name = '') {
   requireSetup();
   const value = String(identifier || '').trim();
-  const byName = register || !value.includes('@');
-  const email = byName ? await nameAccountEmail(value) : value;
+  const normalized = normalizeLoginIdentifier(value);
+  const byName = register || !normalized.includes('@');
+  if (register && /^\d{10,11}$/.test(normalized)) throw new Error('Cadastro por telefone é reservado ao acesso da agência. Escolha um nome de acesso.');
+  const email = register ? await nameAccountEmail(normalized) : await loginIdentifierEmail(normalized);
   const fn = register ? createUserWithEmailAndPassword : signInWithEmailAndPassword;
   try {
     const user = (await fn(auth, email.trim(), password)).user;
@@ -59,7 +63,7 @@ export async function login(identifier, password, register = false, name = '') {
     if (error.code === 'auth/invalid-email') throw new Error('Confira o endereço de e-mail.');
     if (error.code === 'permission-denied') throw new Error('Conta criada, mas o perfil não pôde ser salvo. Atualize e entre novamente.');
     if (error.code === 'auth/too-many-requests') throw new Error('Muitas tentativas. Aguarde um pouco e tente novamente.');
-    throw new Error('Não foi possível entrar. Confira seu nome ou e-mail e a senha.');
+    throw new Error('Não foi possível entrar. Confira seu nome, telefone ou e-mail e a senha.');
   }
 }
 export async function resetPassword(email) {
@@ -211,6 +215,42 @@ export function watchMyBookings(onChange, onError) {
   return reservationStream(query(collection(db, 'bookings'), where('uid', '==', user.uid)), snap => snap.docs.map(item => item.data()), items => {
     onChange(items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
   }, onError);
+}
+
+export async function isProvisionedAdminAccount() {
+  const user = requireUser();
+  const snap = await getDoc(doc(db, 'admin_users', user.uid));
+  return snap.exists();
+}
+
+export async function adminCreatePhoneAccount({ phone, password }) {
+  const creator = requireUser();
+  const normalizedPhone = normalizeLoginIdentifier(phone);
+  if (normalizedPhone.length < 10 || normalizedPhone.length > 11) throw new Error('Confira o número de telefone com DDD.');
+  if (String(password || '').length < 6) throw new Error('A senha precisa ter pelo menos 6 caracteres.');
+  const email = await nameAccountEmail(normalizedPhone);
+  let createdUser = null;
+  try {
+    createdUser = (await createUserWithEmailAndPassword(adminProvisionAuth, email, String(password))).user;
+    await updateProfile(createdUser, { displayName: 'Janu Turismo' });
+    await setDoc(doc(db, 'admin_users', createdUser.uid), {
+      phone: normalizedPhone,
+      name: 'Janu Turismo',
+      createdBy: creator.uid,
+      createdAt: serverTimestamp(),
+    });
+    await signOut(adminProvisionAuth);
+    return { uid: createdUser.uid, phone: normalizedPhone };
+  } catch (error) {
+    if (createdUser) {
+      try { await deleteUser(createdUser); } catch { /* evita esconder o erro principal */ }
+    }
+    try { await signOut(adminProvisionAuth); } catch { /* noop */ }
+    if (error.code === 'auth/email-already-in-use') throw new Error('Esse telefone já possui uma conta. Use o login normal.');
+    if (error.code === 'auth/weak-password') throw new Error('A senha precisa ter pelo menos 6 caracteres.');
+    if (error.code === 'permission-denied') throw new Error('Somente a conta principal da agência pode criar o acesso administrativo.');
+    throw new Error('Não foi possível criar o acesso da Janu agora.');
+  }
 }
 
 export async function adminGet(ids = []) {

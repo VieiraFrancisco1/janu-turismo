@@ -22,3 +22,19 @@ export function isNameAccount(user) {
 export function accountLabel(user) {
   return isNameAccount(user) ? user.displayName || 'Sua conta' : user?.email || user?.displayName || 'Sua conta';
 }
+
+// Phone-like identifiers use only digits so "(88) 8873-7924", "88 8873-7924"
+// and "8888737924" resolve to the same Firebase Auth account.
+export function normalizeLoginIdentifier(value) {
+  const raw = String(value || '').trim();
+  if (raw.includes('@')) return raw.toLowerCase();
+  let phone = raw.replace(/\D/g, '');
+  if ((phone.length === 12 || phone.length === 13) && phone.startsWith('55')) phone = phone.slice(2);
+  if (phone.length >= 10 && phone.length <= 11) return phone;
+  return raw;
+}
+
+export async function loginIdentifierEmail(value) {
+  const normalized = normalizeLoginIdentifier(value);
+  return normalized.includes('@') ? normalized : nameAccountEmail(normalized);
+}
