@@ -53,6 +53,9 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_ENV, `FIREBASE_PROJECT_ID=${serviceAccount.project_id}\n`);
           NODE
 
+      - name: Inspect reservation backend
+        run: node scripts/firebase-backend.mjs
+
       - name: Deploy to Firebase Hosting
         run: npx --yes firebase-tools@latest deploy --only hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
 
