@@ -3273,3 +3273,87 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
     flex: 1 1 calc(50% - 4px);
   }
 }
+
+
+/* Acesso administrativo por telefone */
+.admin-access-setup {
+  display: grid;
+  gap: 14px;
+  margin: 18px 0;
+  padding: 17px;
+  border: 1px solid #d6e6f4;
+  border-radius: 16px;
+  background: #f8fbff;
+}
+.admin-access-setup h2 {
+  margin: 5px 0 6px;
+  color: #173c66;
+  font-size: 20px;
+}
+.admin-access-setup p {
+  margin: 0;
+  color: #62788e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.admin-access-setup form {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 10px;
+}
+.admin-access-setup label {
+  display: grid;
+  gap: 6px;
+  color: #244b73;
+  font-size: 12px;
+  font-weight: 800;
+}
+.admin-access-setup label:first-child {
+  grid-column: 1 / -1;
+}
+.admin-access-setup input {
+  width: 100%;
+  min-height: 43px;
+  padding: 10px 11px;
+  border: 1px solid #d6e2ee;
+  border-radius: 9px;
+  background: #fff;
+  color: #173c66;
+}
+.admin-access-setup input[readonly] {
+  background: #edf4fa;
+  color: #506b84;
+}
+.admin-access-setup .form-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.admin-access-setup button {
+  grid-column: 1 / -1;
+  min-height: 44px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 850;
+}
+.admin-access-setup button:disabled {
+  opacity: .65;
+  cursor: progress;
+}
+.admin-access-setup > small {
+  color: #71869a;
+  font-size: 11px;
+  line-height: 1.45;
+}
+@media (max-width: 560px) {
+  .admin-access-setup form {
+    grid-template-columns: 1fr;
+  }
+  .admin-access-setup label,
+  .admin-access-setup label:first-child,
+  .admin-access-setup .form-error,
+  .admin-access-setup button {
+    grid-column: 1;
+  }
+}
