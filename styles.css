@@ -64,7 +64,7 @@ img { display: block; max-width: 100%; }
 .trip-details-link { margin-top: auto; padding-top: 7px; font-size: 13px; color: var(--blue); font-weight: 650; }
 .trip-details-link span { margin-left: 3px; }
 
-.bottom-nav { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: calc(74px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: rgba(255,255,255,.97); border-top: 1px solid #e0e6ed; box-shadow: 0 -2px 12px rgba(12,35,67,.04); }
+.bottom-nav { position: fixed; z-index: 10; left: 0; right: 0; bottom: 0; height: calc(74px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: #fff; border-top: 1px solid #e0e6ed; box-shadow: 0 -2px 12px rgba(12,35,67,.04); }
 .bottom-nav-inner { height: 100%; width: min(100%, 1120px); margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); }
 .nav-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: #667896; font-size: 13px; font-weight: 520; position: relative; }
 .nav-item.active { color: var(--blue); font-weight: 700; }
@@ -311,7 +311,7 @@ body { background: #e8f0f8; }
 .hero-index { position: absolute; right: 17px; bottom: 13px; color: #fff; font-size: 10px; font-weight: 700; letter-spacing: .12em; opacity: .74; }
 .featured { padding: 22px 17px 0; }
 .section-heading { align-items: flex-end; margin-bottom: 16px; }
-.section-kicker { display: block; color: #d18a00; font-size: 10px; line-height: 1.4; font-weight: 850; letter-spacing: .17em; }
+.section-kicker { display: block; color: #9a6700; font-size: 10px; line-height: 1.4; font-weight: 850; letter-spacing: .17em; }
 .section-heading h2 { margin-top: 4px; font-size: 26px; color: #082a57; }
 .section-heading > a { padding-bottom: 3px; font-size: 13px; }
 .spotlight { position: relative; display: block; height: 326px; overflow: hidden; border-radius: 21px; border: 1px solid #e0e8ef; background: #fff; box-shadow: 0 12px 28px rgba(11,48,92,.11); }
@@ -1246,7 +1246,7 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
 }
 .section-kicker,
 .special-kicker {
-  color: #875900;
+  color: #9a6700;
 }
 .trip-subtitle,
 .list-intro p,
@@ -1765,5 +1765,158 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
   }
   .policy-route-card {
     padding: 24px;
+  }
+}
+
+
+/* ETAPA 5: painel de passageiros */
+.passengers-admin {
+  margin: 34px 0 26px;
+}
+.admin-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+}
+.admin-section-heading h2 {
+  margin: 0 0 5px;
+}
+.admin-section-heading p {
+  margin: 0;
+  color: #51677f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.passengers-admin-list {
+  display: grid;
+  gap: 14px;
+}
+.passenger-trip-card {
+  border: 1px solid #dce7f1;
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+}
+.passenger-trip-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  background: #f6f9fc;
+}
+.passenger-trip-head strong,
+.passenger-trip-head span {
+  display: block;
+}
+.passenger-trip-head strong {
+  color: #123a65;
+}
+.passenger-trip-head span {
+  margin-top: 3px;
+  color: #5d7188;
+  font-size: 12px;
+}
+.passenger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.passenger-actions button,
+.admin-balance-button,
+.passenger-row a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 11px;
+  border: 1px solid #cfddeb;
+  border-radius: 10px;
+  background: #fff;
+  color: #0b5fb9;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+.admin-balance-button,
+.passenger-row a {
+  border-color: #bfe4cd;
+  background: #eef9f2;
+  color: #17633a;
+}
+.boarding-groups {
+  display: grid;
+}
+.boarding-group {
+  padding: 14px;
+  border-top: 1px solid #e7edf3;
+}
+.boarding-group h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 9px;
+  color: #173e69;
+  font-size: 13px;
+}
+.boarding-group h4 > span {
+  margin-left: auto;
+  min-width: 26px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #e9f4ff;
+  color: #075fc6;
+  text-align: center;
+}
+.passenger-list {
+  display: grid;
+  gap: 7px;
+}
+.passenger-row {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid #edf2f6;
+}
+.passenger-row:first-child {
+  border-top: 0;
+}
+.passenger-row > span {
+  min-width: 0;
+}
+.passenger-row strong,
+.passenger-row small {
+  display: block;
+}
+.passenger-row strong {
+  color: #17395f;
+  font-size: 13px;
+}
+.passenger-row small {
+  margin-top: 3px;
+  color: #60748a;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.admin-bookings .admin-balance-button {
+  margin-top: 7px;
+}
+@media (max-width: 620px) {
+  .passenger-trip-head,
+  .passenger-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .passenger-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .passenger-row a {
+    width: 100%;
   }
 }
