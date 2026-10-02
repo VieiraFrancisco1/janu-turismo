@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where, orderBy, limit, runTransaction } from 'firebase/firestore';
 import { firebaseConfig } from './firebase-config.js';
 
@@ -39,6 +39,37 @@ export async function login(email, password, register = false, name = '') {
     throw new Error('Não foi possível entrar. Confira e-mail e senha.');
   }
 }
+export async function resetPassword(email) {
+  requireSetup();
+  const value = String(email || '').trim();
+  if (!value) throw new Error('Informe seu e-mail para recuperar a senha.');
+  try {
+    await sendPasswordResetEmail(auth, value);
+  } catch (error) {
+    if (error.code === 'auth/invalid-email') throw new Error('Confira o endereço de e-mail.');
+    if (error.code === 'auth/too-many-requests') throw new Error('Muitas tentativas. Aguarde um pouco e tente novamente.');
+    throw new Error('Não foi possível enviar o e-mail de recuperação agora.');
+  }
+}
+
+export async function loginWithGoogle() {
+  requireSetup();
+  try {
+    const provider = new GoogleAuthProvider();
+    const user = (await signInWithPopup(auth, provider)).user;
+    await setDoc(doc(db, 'profiles', user.uid), {
+      email: String(user.email || '').toLowerCase(),
+      name: (user.displayName || user.email?.split('@')[0] || 'Cliente').slice(0, 80),
+    });
+    return user;
+  } catch (error) {
+    if (error.code === 'auth/popup-closed-by-user') throw new Error('Login com Google cancelado.');
+    if (error.code === 'auth/popup-blocked') throw new Error('O navegador bloqueou a janela do Google. Libere pop-ups e tente novamente.');
+    if (error.code === 'auth/operation-not-allowed') throw new Error('Entrar com Google ainda não está ativado no Firebase.');
+    throw new Error('Não foi possível entrar com Google agora.');
+  }
+}
+
 export async function logout() { if (auth) await signOut(auth); }
 
 export async function getCatalog() {
@@ -123,6 +154,9 @@ export async function adminSaveTrip(trip) {
       (trip.endDate && !/^\d{4}-\d{2}-\d{2}$/.test(trip.endDate)) ||
       (trip.startDate && trip.endDate && trip.endDate < trip.startDate) ||
       (trip.minToConfirm != null && (!Number.isInteger(trip.minToConfirm) || trip.minToConfirm < 1 || trip.minToConfirm > 500)) ||
+      (trip.cardMax != null && (!Number.isInteger(trip.cardMax) || trip.cardMax < 1 || trip.cardMax > 24)) ||
+      (trip.cardSurchargePercent != null && (!Number.isFinite(trip.cardSurchargePercent) || trip.cardSurchargePercent < 0 || trip.cardSurchargePercent > 100)) ||
+      (trip.pixMax != null && (!Array.isArray(trip.pixMax) || trip.pixMax.length > 12 || trip.pixMax.some(rule => !Number.isInteger(rule.daysMin) || rule.daysMin < 0 || rule.daysMin > 730 || !Number.isInteger(rule.maxInstallments) || rule.maxInstallments < 1 || rule.maxInstallments > 24))) ||
       !Array.isArray(trip.images) || trip.images.length > 4 || trip.images.some(image => !image.startsWith('data:image/jpeg;base64,') || image.length > 160000)) throw new Error('Confira os dados e fotos da viagem.');
   const { id, ...fields } = trip;
   await setDoc(doc(db, 'trip_catalog', id), fields);
