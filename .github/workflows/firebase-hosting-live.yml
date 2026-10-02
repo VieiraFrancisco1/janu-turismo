@@ -20,11 +20,20 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Setup Java for Firestore tests
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Test reservation rules and transactions
+        run: npx --yes firebase-tools@14.17.0 emulators:exec --project demo-janu --only firestore --config firebase.emulators.json "node --experimental-vm-modules tests/reservations.mjs"
 
       - name: Build
         run: npm run build
@@ -53,11 +62,14 @@ jobs:
           fs.appendFileSync(process.env.GITHUB_ENV, `FIREBASE_PROJECT_ID=${serviceAccount.project_id}\n`);
           NODE
 
-      - name: Inspect reservation backend
+      - name: Prepare reservation backend
         run: node scripts/firebase-backend.mjs
 
       - name: Deploy to Firebase Hosting
-        run: npx --yes firebase-tools@latest deploy --only hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
+        run: npx --yes firebase-tools@latest deploy --only firestore:rules,hosting --project "$FIREBASE_PROJECT_ID" --non-interactive
+
+      - name: Verify real reservation storage
+        run: node scripts/verify-reservations-live.mjs
 
       - name: Verify live Firebase release
         run: |

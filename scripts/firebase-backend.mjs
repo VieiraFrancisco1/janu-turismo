@@ -19,5 +19,36 @@ async function api(url) {
 const release = await api(`https://firebaserules.googleapis.com/v1/projects/${project}/releases/cloud.firestore`);
 const ruleset = await api(`https://firebaserules.googleapis.com/v1/${release.rulesetName}`);
 const source = ruleset.source.files.map(file => file.content).join('\n');
-// Somente código de regras; nunca imprime credenciais, usuários ou reservas.
-console.log('REGRAS_ATIVAS_INICIO\n' + source + '\nREGRAS_ATIVAS_FIM');
+// Preserva exatamente a conta que já estava autorizada nas regras em produção.
+const agencyMatch = source.match(/function\s+agency\(\)\s*\{\s*return\s+signed\(\)\s*&&\s*request\.auth\.uid\s*==\s*['"]([A-Za-z0-9_-]{10,128})['"]\s*;\s*\}/);
+if (!agencyMatch) throw new Error('A conta da agência precisa ser conferida antes de atualizar as regras. Nenhum acesso foi alterado.');
+const template = await fs.readFile('firestore.rules.template', 'utf8');
+await fs.writeFile('firestore.rules', template.replaceAll('__ADMIN_UID__', agencyMatch[1]));
+console.log('Conta da agência preservada; regras de reservas preparadas.');
+
+const { initializeApp, cert } = await import('firebase-admin/app');
+const { getFirestore, Timestamp } = await import('firebase-admin/firestore');
+const { PASSEIOS_SEED, adaptarPasseioParaApp } = await import('../catalogo.js');
+const { prepareCatalog, bookingClosesAt } = await import('../booking-model.js');
+initializeApp({ credential: cert(credentials), projectId: project });
+const db = getFirestore();
+let created = 0, migrated = 0;
+for (const seed of PASSEIOS_SEED.map(adaptarPasseioParaApp)) {
+  const ref = db.collection('trip_catalog').doc(seed.id);
+  await db.runTransaction(async tx => {
+    const snapshot = await tx.get(ref);
+    if (!snapshot.exists) {
+      const { id, ...fields } = prepareCatalog(seed);
+      const clean = JSON.parse(JSON.stringify(fields));
+      tx.create(ref, { ...clean, bookingClosesAt: Timestamp.fromDate(bookingClosesAt(seed)) });
+      created++;
+    } else {
+      const existing = snapshot.data();
+      // Atualiza apenas os campos de validação. Não troca preços, fotos ou textos da agência.
+      const prepared = prepareCatalog(existing);
+      tx.update(ref, { fareOptions: prepared.fareOptions, bookingClosesAt: Timestamp.fromDate(bookingClosesAt(existing)) });
+      migrated++;
+    }
+  });
+}
+console.log(`Catálogo sincronizado: ${created} viagens iniciais, ${migrated} existentes preservadas. Capacidade real não alterada.`);

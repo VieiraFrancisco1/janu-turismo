@@ -1,8 +1,116 @@
-// O script publicar.ps1 gera as regras específicas do UID da agência.
-// Até lá, o banco permanece fechado.
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signed() { return request.auth != null; }
+    function agency() { return signed() && request.auth.uid == 'Lnixa19EPhSLUgROkc0Of95SYo53'; }
+    function tripPath(id) { return /databases/$(database)/documents/trip_inventory/$(id); }
+    function bookingPath(id) { return /databases/$(database)/documents/bookings/$(id); }
+    function catalogPath(id) { return /databases/$(database)/documents/trip_catalog/$(id); }
+    function validInventory(d) {
+      return d.keys().hasOnly(['capacity', 'reserved', 'demo', 'enabled', 'lastBookingId'])
+        && d.capacity is int && d.capacity >= 0 && d.capacity <= 500
+        && d.reserved is int && d.reserved >= 0 && d.reserved <= d.capacity
+        && d.demo is bool && d.enabled is bool;
+    }
+    function validPrice(d) {
+      let trip = get(catalogPath(d.tripId)).data;
+      let fare = trip.fareOptions[d.fareIndex];
+      return trip.published == true && trip.dateTbc == false
+        && !(trip.status in ['esgotado', 'encerrado', 'data-a-confirmar'])
+        && trip.bookingClosesAt > request.time
+        && d.tripTitle == trip.title && d.tripDate == trip.date && d.tripStartDate == trip.startDate
+        && d.fareLabel == fare.label && d.fareSeats == fare.seats && d.unitPriceCents == fare.amountCents
+        && d.seats == fare.seats * d.quantity && d.totalCents == fare.amountCents * d.quantity
+        && (trip.boarding.size() == 0 || d.boarding in trip.boarding)
+        && (!fare.keys().hasAny(['boardingCity']) || fare.boardingCity == '' || d.boarding == fare.boardingCity);
+    }
+    function newBooking(d, id) {
+      return signed() && id.matches('^JT-[A-F0-9]{10}$')
+        && d.keys().hasAll(['id', 'uid', 'tripId', 'firstName', 'lastName', 'cpf', 'cpfLast4', 'phone', 'seats', 'payment', 'boarding', 'status', 'createdAt', 'createdAtServer', 'seatsHeld', 'fareIndex', 'fareLabel', 'fareSeats', 'quantity', 'unitPriceCents', 'totalCents', 'tripTitle', 'tripDate', 'tripStartDate'])
+        && d.keys().hasOnly(['id', 'uid', 'tripId', 'firstName', 'lastName', 'cpf', 'cpfLast4', 'phone', 'seats', 'payment', 'boarding', 'status', 'createdAt', 'createdAtServer', 'seatsHeld', 'fareIndex', 'fareLabel', 'fareSeats', 'quantity', 'unitPriceCents', 'totalCents', 'tripTitle', 'tripDate', 'tripStartDate'])
+        && d.id == id && d.uid == request.auth.uid && d.tripId.matches('^[a-z0-9-]{3,45}$')
+        && d.firstName is string && d.firstName.size() >= 2 && d.firstName.size() <= 60
+        && d.lastName is string && d.lastName.size() >= 2 && d.lastName.size() <= 80
+        && d.cpf is string && d.cpf.matches('^[0-9]{11}$')
+        && d.cpfLast4 is string && d.cpfLast4.matches('^[0-9]{4}$') && d.cpf.matches('^[0-9]{7}' + d.cpfLast4 + '$')
+        && d.phone is string && d.phone.matches('^[0-9]{10,11}$')
+        && d.seats is int && d.seats >= 1 && d.seats <= 10
+        && d.fareIndex is int && d.fareIndex >= 0 && d.fareIndex < 30
+        && d.quantity is int && d.quantity >= 1 && d.quantity <= 10
+        && d.unitPriceCents is int && d.unitPriceCents >= 0 && d.totalCents is int
+        && d.payment in ['pix', 'cartao'] && d.boarding is string && d.boarding.size() > 0 && d.boarding.size() <= 80
+        && d.status == 'pending' && d.createdAt is string && d.createdAt.size() <= 40
+        && d.createdAtServer == request.time && d.seatsHeld is bool && validPrice(d);
+    }
+    function holdsSeats(d, id) {
+      return exists(tripPath(d.tripId)) && get(tripPath(d.tripId)).data.enabled == true
+        && get(tripPath(d.tripId)).data.demo == false
+        && getAfter(tripPath(d.tripId)).data.lastBookingId == id
+        && getAfter(tripPath(d.tripId)).data.reserved == get(tripPath(d.tripId)).data.reserved + d.seats
+        && getAfter(tripPath(d.tripId)).data.reserved <= getAfter(tripPath(d.tripId)).data.capacity;
+    }
+    function unconfigured(d) {
+      return !exists(tripPath(d.tripId)) || get(tripPath(d.tripId)).data.demo == true;
+    }
+    function held(d) { return !d.keys().hasAny(['seatsHeld']) || d.seatsHeld == true; }
+    function agencyStatusChange() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let path = tripPath(before.tripId);
+      return agency() && before.status != 'cancelled'
+        && after.diff(before).affectedKeys().hasOnly(['status', 'seatsHeld', 'updatedAt'])
+        && after.updatedAt == request.time
+        && ((before.status == 'pending' && after.status == 'confirmed' && after.seatsHeld == true
+          && (held(before) || (get(path).data.demo == false && getAfter(path).data.reserved == get(path).data.reserved + before.seats)))
+        || (after.status == 'cancelled' && after.seatsHeld == false
+          && (!held(before) || getAfter(path).data.reserved == get(path).data.reserved - before.seats)));
+    }
+    match /profiles/{userId} {
+      allow get: if agency() || (signed() && request.auth.uid == userId);
+      allow list: if agency();
+      allow create, update: if signed() && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['email', 'name'])
+        && request.resource.data.email == request.auth.token.email.lower()
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80;
+      allow delete: if false;
+    }
+    match /trip_catalog/{tripId} {
+      allow read: if true;
+      allow create, update: if agency() && tripId.matches('^[a-z0-9-]{3,45}$')
+        && request.resource.data.title is string && request.resource.data.title.size() <= 100
+        && request.resource.data.price is number && request.resource.data.price >= 0
+        && request.resource.data.images is list && request.resource.data.images.size() <= 4
+        && request.resource.data.fareOptions is list && request.resource.data.fareOptions.size() <= 30
+        && request.resource.data.bookingClosesAt is timestamp;
+      allow delete: if false;
+    }
+    match /trip_inventory/{tripId} {
+      allow read: if true;
+      allow create: if agency() && validInventory(request.resource.data)
+        && request.resource.data.reserved == 0 && request.resource.data.demo == false;
+      allow update: if validInventory(request.resource.data) && (agency() || (
+        signed() && resource.data.enabled == true && resource.data.demo == false
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reserved', 'lastBookingId'])
+        && request.resource.data.reserved > resource.data.reserved
+        && request.resource.data.lastBookingId.matches('^JT-[A-F0-9]{10}$')
+        && !exists(bookingPath(request.resource.data.lastBookingId))
+        && getAfter(bookingPath(request.resource.data.lastBookingId)).data.uid == request.auth.uid
+        && getAfter(bookingPath(request.resource.data.lastBookingId)).data.tripId == tripId
+        && getAfter(bookingPath(request.resource.data.lastBookingId)).data.seatsHeld == true
+        && getAfter(bookingPath(request.resource.data.lastBookingId)).data.seats == request.resource.data.reserved - resource.data.reserved
+      ));
+      allow delete: if false;
+    }
+    match /bookings/{bookingId} {
+      // A leitura de um ID ainda inexistente permite a repetição segura da transação.
+      allow get: if signed() && (!exists(bookingPath(bookingId)) || agency() || resource.data.uid == request.auth.uid);
+      allow list: if signed() && (agency() || resource.data.uid == request.auth.uid);
+      allow create: if agency() || (newBooking(request.resource.data, bookingId)
+        && ((request.resource.data.seatsHeld == true && holdsSeats(request.resource.data, bookingId))
+          || (request.resource.data.seatsHeld == false && unconfigured(request.resource.data))));
+      allow update: if agencyStatusChange();
+      allow delete: if false;
+    }
     match /{document=**} { allow read, write: if false; }
   }
 }

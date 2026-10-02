@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where, orderBy, limit, runTransaction } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, getDocs, setDoc, collection, query, where, orderBy, limit, runTransaction, serverTimestamp, Timestamp, onSnapshot } from 'firebase/firestore';
+import { bookingId, bookingClosesAt, prepareCatalog, catalogForApp, bookingSnapshot } from './booking-model.js';
 import { firebaseConfig } from './firebase-config.js';
 import { nameAccountEmail, isNameAccount, accountLabel } from './account-name.js';
 export { accountLabel } from './account-name.js';
@@ -98,7 +99,7 @@ export async function getCatalog() {
   requireSetup();
   if (fresh(catalogCache)) return catalogCache.value.map(item => ({ ...item }));
   const snap = await getDocs(collection(db, 'trip_catalog'));
-  const value = snap.docs.map(item => ({ id: item.id, ...item.data() }));
+  const value = snap.docs.map(item => catalogForApp({ id: item.id, ...item.data() }));
   catalogCache = { value, expiresAt: Date.now() + CACHE_TTL_MS };
   return value.map(item => ({ ...item }));
 }
@@ -125,30 +126,41 @@ export async function getTrips(ids = []) {
 export async function createBooking(input) {
   const user = requireUser();
   const cpf = digits(input.cpf), phone = digits(input.phone);
-  const seats = Number(input.seats);
-  if (!validTripId(input.tripId) || !validCpf(cpf) || phone.length < 10 || phone.length > 11 ||
-      !Number.isInteger(seats) || seats < 1 || seats > 10 || !['pix', 'cartao'].includes(input.payment) ||
-      !input.firstName?.trim() || !input.lastName?.trim()) throw new Error('Confira os dados da reserva.');
-  const id = `JT-${Array.from(crypto.getRandomValues(new Uint8Array(5)), n => n.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
+  const firstName = String(input.firstName || '').trim(), lastName = String(input.lastName || '').trim();
+  if (!validTripId(input.tripId) || !validCpf(cpf) || !/^\d{10,11}$/.test(phone) ||
+      firstName.length < 2 || firstName.length > 60 || lastName.length < 2 || lastName.length > 80 ||
+      !['pix', 'cartao'].includes(input.payment)) throw new Error('Confira nome, CPF, telefone e pagamento da reserva.');
+  const id = input.id || bookingId();
+  if (!/^JT-[A-F0-9]{10}$/.test(id)) throw new Error('Identificador da reserva inválido.');
   const tripRef = doc(db, 'trip_inventory', input.tripId);
   const bookingRef = doc(db, 'bookings', id);
-  const booking = {
-    id, uid: user.uid, tripId: input.tripId,
-    firstName: input.firstName.trim(), lastName: input.lastName.trim(), cpf, cpfLast4: cpf.slice(-4), phone,
-    seats, payment: input.payment, boarding: (input.boarding || '').trim(),
-    status: 'pending', createdAt: new Date().toISOString(),
-  };
-  if (input.fareLabel) booking.fareLabel = String(input.fareLabel).slice(0, 80);
+  let booking;
   try {
     await runTransaction(db, async tx => {
+      const existing = await tx.get(bookingRef);
+      if (existing.exists()) {
+        if (existing.data().uid !== user.uid) throw new Error('Não foi possível recuperar esta reserva.');
+        booking = existing.data();
+        return;
+      }
+      const catalogSnap = await tx.get(doc(db, 'trip_catalog', input.tripId));
+      const snapshot = bookingSnapshot(catalogSnap.data(), input);
       const tripSnap = await tx.get(tripRef);
       const trip = tripSnap.data();
-      if (!trip?.enabled || trip.demo || trip.capacity - trip.reserved < seats) throw new Error('Viagem não liberada ou sem vagas suficientes.');
+      if (trip && !trip.demo && !trip.enabled) throw new Error('As reservas desta viagem estão pausadas. Fale com a Janu.');
+      const seatsHeld = Boolean(trip?.enabled && !trip.demo);
+      if (seatsHeld && trip.capacity - trip.reserved < snapshot.seats) throw new Error('Não há vagas suficientes para essa quantidade.');
+      booking = {
+        id, uid: user.uid, tripId: input.tripId, firstName, lastName, cpf, cpfLast4: cpf.slice(-4), phone,
+        ...snapshot, payment: input.payment, seatsHeld, status: 'pending',
+        createdAt: new Date().toISOString(), createdAtServer: serverTimestamp(),
+      };
       tx.set(bookingRef, booking);
-      tx.update(tripRef, { reserved: trip.reserved + seats, lastBookingId: id });
+      if (seatsHeld) tx.update(tripRef, { reserved: trip.reserved + snapshot.seats, lastBookingId: id });
     });
   } catch (error) {
-    if (error.code === 'permission-denied') throw new Error('Não foi possível reservar. Atualize a página e confira as vagas.');
+    if (error.code === 'permission-denied') throw new Error('Não foi possível salvar. Atualize a página, confira os dados e tente novamente.');
+    if (['unavailable', 'deadline-exceeded'].includes(error.code)) throw new Error('Não conseguimos confirmar o salvamento. Confira sua conexão e tente novamente; o mesmo pedido não será duplicado.');
     throw error;
   }
   invalidateTripCache(input.tripId);
@@ -159,13 +171,28 @@ export async function getBooking(id) {
   requireUser();
   const snap = await getDoc(doc(db, 'bookings', id));
   if (!snap.exists()) throw new Error('Reserva não encontrada.');
+  if (snap.data().uid !== currentUser().uid) throw new Error('Esta reserva pertence a outra conta.');
   return { booking: snap.data() };
 }
 export async function myBookings() {
   const user = requireUser();
-  const snap = await getDocs(query(collection(db, 'bookings'), where('uid', '==', user.uid), limit(100)));
-  return snap.docs.map(doc => doc.data()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const snap = await getDocs(query(collection(db, 'bookings'), where('uid', '==', user.uid)));
+  return snap.docs.map(doc => doc.data()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 }
+export function watchBooking(id, onChange, onError) {
+  const user = requireUser();
+  return onSnapshot(doc(db, 'bookings', id), snap => {
+    if (!snap.exists() || snap.data().uid !== user.uid) { onError(new Error('Reserva não encontrada nesta conta.')); return; }
+    onChange(snap.data());
+  }, () => onError(new Error('Não conseguimos atualizar sua reserva. Confira a conexão e tente novamente.')));
+}
+export function watchMyBookings(onChange, onError) {
+  const user = requireUser();
+  return onSnapshot(query(collection(db, 'bookings'), where('uid', '==', user.uid)), snap => {
+    onChange(snap.docs.map(item => item.data()).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))));
+  }, () => onError(new Error('Não conseguimos carregar suas reservas. Confira a conexão e tente novamente.')));
+}
+
 export async function adminGet(ids = []) {
   requireUser();
   const [trips, snap, catalog] = await Promise.all([getTrips(ids), getDocs(query(collection(db, 'bookings'), orderBy('createdAt', 'desc'), limit(150))), getCatalog()]);
@@ -196,7 +223,8 @@ export async function adminSaveTrip(trip) {
       (trip.cardSurchargePercent != null && (!Number.isFinite(trip.cardSurchargePercent) || trip.cardSurchargePercent < 0 || trip.cardSurchargePercent > 100)) ||
       (trip.pixMax != null && (!Array.isArray(trip.pixMax) || trip.pixMax.length > 12 || trip.pixMax.some(rule => !Number.isInteger(rule.daysMin) || rule.daysMin < 0 || rule.daysMin > 730 || !Number.isInteger(rule.maxInstallments) || rule.maxInstallments < 1 || rule.maxInstallments > 24))) ||
       !Array.isArray(trip.images) || trip.images.length > 4 || trip.images.some(image => !image.startsWith('data:image/jpeg;base64,') || image.length > 160000)) throw new Error('Confira os dados e fotos da viagem.');
-  const { id, ...fields } = trip;
+  const { id, ...fields } = prepareCatalog(trip);
+  fields.bookingClosesAt = Timestamp.fromDate(bookingClosesAt(trip));
   await setDoc(doc(db, 'trip_catalog', id), fields);
   invalidateCatalogCache();
 }
@@ -206,18 +234,20 @@ export async function adminManualBooking(input) {
   if (!validTripId(input.tripId) || !validCpf(cpf) || !/^\d{10,11}$/.test(phone) ||
       !Number.isInteger(seats) || seats < 1 || seats > 10 || !input.firstName?.trim() || !input.lastName?.trim()) throw new Error('Confira os dados do passageiro.');
   let linkedUid = '';
-  if (input.email?.trim()) {
-    const profiles = await getDocs(query(collection(db, 'profiles'), where('email', '==', input.email.trim().toLowerCase()), limit(1)));
+  const identifier = String(input.identifier || input.email || '').trim();
+  if (identifier) {
+    const email = identifier.includes('@') ? identifier.toLowerCase() : await nameAccountEmail(identifier);
+    const profiles = await getDocs(query(collection(db, 'profiles'), where('email', '==', email), limit(1)));
     if (!profiles.empty) linkedUid = profiles.docs[0].id;
   }
   const id = `JT-${Array.from(crypto.getRandomValues(new Uint8Array(5)), n => n.toString(16).padStart(2, '0')).join('').toUpperCase()}`;
   const ref = doc(db, 'trip_inventory', input.tripId);
   const booking = { id, uid: linkedUid, tripId: input.tripId, firstName: input.firstName.trim(), lastName: input.lastName.trim(),
     cpf, cpfLast4: cpf.slice(-4), phone, seats, payment: 'a_combinar', boarding: (input.boarding || '').trim(),
-    status: 'pending', createdAt: new Date().toISOString(), source: 'whatsapp' };
+    status: 'pending', seatsHeld: true, createdAt: new Date().toISOString(), createdAtServer: serverTimestamp(), source: 'whatsapp' };
   await runTransaction(db, async tx => {
     const trip = await tx.get(ref);
-    if (!trip.exists() || trip.data().capacity - trip.data().reserved < seats) throw new Error('Não há vagas suficientes. Ajuste a capacidade antes de adicionar.');
+    if (!trip.exists() || trip.data().demo || !trip.data().enabled || trip.data().capacity - trip.data().reserved < seats) throw new Error('Não há vagas suficientes. Ajuste a capacidade antes de adicionar.');
     tx.set(doc(db, 'bookings', id), booking);
     tx.update(ref, { reserved: trip.data().reserved + seats });
   });
@@ -232,14 +262,20 @@ export async function adminSetStatus({ id, status }) {
     const snap = await tx.get(bookingRef);
     if (!snap.exists()) throw new Error('Reserva não encontrada.');
     const booking = snap.data();
-    if (status === 'confirmed' && booking.status !== 'pending') throw new Error('Reserva não está pendente.');
-    if (status === 'cancelled' && booking.status === 'cancelled') throw new Error('Reserva já foi cancelada.');
-    if (status === 'cancelled') {
-      const tripRef = doc(db, 'trip_inventory', booking.tripId);
+    if (booking.status === status) return;
+    if (booking.status === 'cancelled' || (status === 'confirmed' && booking.status !== 'pending')) throw new Error('Esta reserva não pode receber essa alteração.');
+    // Reservas antigas já descontavam as vagas e não tinham seatsHeld.
+    const held = booking.seatsHeld !== false;
+    const tripRef = doc(db, 'trip_inventory', booking.tripId);
+    if ((status === 'cancelled' && held) || (status === 'confirmed' && !held)) {
       const trip = await tx.get(tripRef);
-      tx.update(tripRef, { reserved: trip.data().reserved - booking.seats });
+      const inventory = trip.data();
+      if (!inventory || inventory.demo) throw new Error('Configure a capacidade real da viagem antes de confirmar.');
+      const reserved = inventory.reserved + (status === 'confirmed' ? booking.seats : -booking.seats);
+      if (reserved < 0 || reserved > inventory.capacity) throw new Error('Confira a capacidade: não há vagas suficientes ou o controle está inconsistente.');
+      tx.update(tripRef, { reserved });
     }
-    tx.update(bookingRef, { status });
+    tx.update(bookingRef, { status, seatsHeld: status === 'confirmed', updatedAt: serverTimestamp() });
   });
   invalidateTripCache();
 }

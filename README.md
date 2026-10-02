@@ -44,9 +44,9 @@ Não use regras abertas de teste e não altere `firestore.rules.template` sem re
 
 ## Viagens e reservas
 
-A Home filtra viagens passadas pelas datas reais, permite escolher a cidade de embarque e mostra os próximos passeios em carrossel. A página da viagem calcula o total, mostra condições de Pix/cartão e abre o WhatsApp com a mensagem pronta.
+A Home filtra viagens passadas pelas datas reais, mostra os próximos passeios em carrossel. A página da viagem calcula o total, mostra condições de Pix/cartão e salva a reserva na conta antes de oferecer a continuação pelo WhatsApp.
 
-O painel `#/gestao` permite editar viagens, vagas e reservas, além de listar passageiros agrupados por embarque, copiar a lista, baixar CSV e abrir uma cobrança de saldo pelo WhatsApp.
+O painel `#/gestao` permite editar viagens, vagas e reservas, além de listar passageiros agrupados por embarque, copiar a lista, baixar CSV e conversar com o cliente pelo WhatsApp.
 
 Dados provisórios ou ainda não validados devem permanecer marcados como **[CONFIRMAR]**.
 
@@ -61,3 +61,27 @@ Contas criadas sem endereço de e-mail não oferecem recuperação automática p
 ### Galeria de fotos das viagens
 
 `photo-gallery.js` usa as fotos cadastradas no catálogo de cada destino. Com mais de uma imagem, o carrossel alterna a cada cinco segundos e oferece controles, pausa e navegação por gesto. “Explorar fotos” abre a galeria em tela cheia, com miniaturas e navegação pelo teclado. Uma viagem com apenas uma imagem mantém a foto estática e permite ampliá-la. A preferência por movimento reduzido desativa a troca automática.
+
+### Reservas persistentes
+
+O cliente escolhe opção, quantidade e embarque, preenche seus dados e entra ou cria uma conta sem perder o formulário. O pedido é salvo em `bookings` antes de exibir a confirmação. `Minhas reservas` e o detalhe acompanham alterações de status em tempo real.
+
+Cada reserva guarda destino, data, opção, quantidade, passageiros e valor em centavos. O Firestore valida preço, embarque e quantidade contra o catálogo da agência. Um identificador reutilizado em tentativas de envio impede criar uma segunda reserva quando há falha de conexão. Nenhum dado pessoal é salvo em sessionStorage, apenas esse identificador.
+
+Sem capacidade configurada, o pedido fica pendente da disponibilidade; não inventa vagas nem confirma pagamento. Com capacidade real liberada, a transação separa lugares sem exceder o limite. Viagens pausadas, esgotadas ou encerradas bloqueiam pedidos novos. Em `#/gestao`, a conta já autorizada pode configurar capacidade, confirmar disponibilidade e pagamento recebido ou cancelar. A confirmação de um pedido sem lugares separados exige capacidade real suficiente; o cancelamento devolve os lugares apenas uma vez.
+
+O valor registrado é o do pacote, sem eventual acréscimo de cartão. Pix/cartão são combinados com a Janu; o site não realiza cobrança automática. O link da reserva continua protegido pela conta do responsável e não expõe documentos a terceiros.
+
+### Publicação e verificação das reservas
+
+O GitHub Actions usa Node 22 e o secret existente `FIREBASE_SERVICE_ACCOUNT`. Antes da publicação, testa regras e transações no Firestore Emulator. O script `scripts/firebase-backend.mjs` preserva a conta da agência nas regras ativas, cadastra viagens iniciais ausentes e migra somente os campos de validação de viagens existentes. Não sobrescreve preços, fotos ou capacidade real.
+
+O deploy inclui `firestore:rules,hosting`. `scripts/verify-reservations-live.mjs` verifica gravação, novo login, repetição segura e isolamento entre contas no Firebase real usando dados temporários. Esses dados e contas são removidos ao fim. Se todas as viagens tiverem capacidade real configurada, o teste real de escrita é dispensado para não ocupar vagas; os testes no emulador continuam obrigatórios.
+
+Para testar localmente (Node 22 e Java 21):
+
+```powershell
+npx --yes firebase-tools@14.17.0 emulators:exec --project demo-janu --only firestore --config firebase.emulators.json "npm run test:reservas"
+```
+
+As regras publicadas continuam fechadas para leitura pública de reservas e perfis. Nunca publique o antigo arquivo de regras de negação total nem regras abertas. Para publicação manual desta versão no projeto oficial, use `npx firebase deploy --only firestore:rules,hosting --project janu-turismo-e747f`.

@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "dev": "npm run build && node server.mjs"
+    "dev": "npm run build && node server.mjs",
+    "test:reservas": "node --experimental-vm-modules tests/reservations.mjs"
   },
   "dependencies": {
     "firebase": "^12.0.0"
   },
   "devDependencies": {
-    "esbuild": "^0.25.0"
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "esbuild": "^0.25.0",
+    "firebase-admin": "^14.5.0"
   }
 }

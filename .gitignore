@@ -7,3 +7,6 @@ dist/
 firebase-debug.log*
 npm-debug.log*
 serviceAccount*.json
+
+firestore-debug.log*
+ui-debug.log*
