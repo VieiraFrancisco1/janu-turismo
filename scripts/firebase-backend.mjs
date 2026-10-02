@@ -20,11 +20,12 @@ const release = await api(`https://firebaserules.googleapis.com/v1/projects/${pr
 const ruleset = await api(`https://firebaserules.googleapis.com/v1/${release.rulesetName}`);
 const source = ruleset.source.files.map(file => file.content).join('\n');
 // Preserva exatamente a conta que já estava autorizada nas regras em produção.
-const agencyMatch = source.match(/function\s+agency\(\)\s*\{\s*return\s+signed\(\)\s*&&\s*request\.auth\.uid\s*==\s*['"]([A-Za-z0-9_-]{10,128})['"]\s*;\s*\}/);
-if (!agencyMatch) throw new Error('A conta da agência precisa ser conferida antes de atualizar as regras. Nenhum acesso foi alterado.');
+const agencyMatch = source.match(/function\s+primaryAgency\(\)\s*\{\s*return\s+signed\(\)\s*&&\s*request\.auth\.uid\s*==\s*['"]([A-Za-z0-9_-]{10,128})['"]\s*;\s*\}/)
+  || source.match(/function\s+agency\(\)\s*\{\s*return\s+signed\(\)\s*&&\s*request\.auth\.uid\s*==\s*['"]([A-Za-z0-9_-]{10,128})['"]\s*;\s*\}/);
+if (!agencyMatch) throw new Error('A conta principal da agência precisa ser conferida antes de atualizar as regras. Nenhum acesso foi alterado.');
 if (process.argv[2] === 'deploy-rules') {
   const content = await fs.readFile('firestore.rules', 'utf8');
-  if (!content.includes(`request.auth.uid == '${agencyMatch[1]}'`) || content.includes('__ADMIN_UID__')) throw new Error('A conta da agência não corresponde às regras preparadas.');
+  if (!content.includes(`request.auth.uid == '${agencyMatch[1]}'`) || content.includes('__ADMIN_UID__')) throw new Error('A conta principal da agência não corresponde às regras preparadas.');
   const created = await api(`https://firebaserules.googleapis.com/v1/projects/${project}/rulesets`, {
     method: 'POST', body: JSON.stringify({ source: { files: [{ name: 'firestore.rules', content }] } }),
   });
