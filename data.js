@@ -225,7 +225,7 @@ export async function isProvisionedAdminAccount() {
 
 export async function adminCreatePhoneAccount({ phone, password }) {
   const creator = requireUser();
-  const normalizedPhone = String(phone || '').replace(/\D/g, '');
+  const normalizedPhone = normalizeLoginIdentifier(phone);
   if (normalizedPhone.length < 10 || normalizedPhone.length > 11) throw new Error('Confira o número de telefone com DDD.');
   if (String(password || '').length < 6) throw new Error('A senha precisa ter pelo menos 6 caracteres.');
   const email = await nameAccountEmail(normalizedPhone);
