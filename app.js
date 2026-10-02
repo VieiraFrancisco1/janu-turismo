@@ -1,25 +1,9 @@
+import { DEPOIMENTOS } from './depoimentos.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
 import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
 
-const DEPOIMENTOS = [
-  {
-    nome: 'Cliente 1 [SUBSTITUIR]',
-    passeio: 'Passeio [SUBSTITUIR]',
-    texto: '[SUBSTITUIR] Inserir aqui um depoimento real, com autorização do cliente.',
-  },
-  {
-    nome: 'Cliente 2 [SUBSTITUIR]',
-    passeio: 'Passeio [SUBSTITUIR]',
-    texto: '[SUBSTITUIR] Inserir aqui um depoimento real, com autorização do cliente.',
-  },
-  {
-    nome: 'Cliente 3 [SUBSTITUIR]',
-    passeio: 'Passeio [SUBSTITUIR]',
-    texto: '[SUBSTITUIR] Inserir aqui um depoimento real, com autorização do cliente.',
-  },
-];
 const AGENCY_INFO = {
   instagram: 'https://www.instagram.com/januturismo_/',
   instagramHandle: '@januturismo_',
@@ -608,7 +592,7 @@ function heroMarkup(trips) {
 
   const slides = trips.slice(0, 5);
   const multiple = slides.length > 1;
-  return `<section class="hero hero-carousel" role="region" aria-roledescription="carrossel" aria-label="Viagens em destaque">
+  return `<section class="hero hero-carousel home-banner" role="region" aria-roledescription="carrossel" aria-label="Viagens em destaque">
     <h1 class="sr-only">Janu Turismo — viagens em destaque</h1>
     <div class="hero-track">${slides.map((trip, index) => `<article class="hero-slide" role="group" aria-roledescription="slide" aria-label="${index + 1} de ${slides.length}" aria-hidden="${index !== 0}">
       <img src="${trip.image}" alt="${escapeHtml(trip.imageAlt || trip.title)}" ${index === 0 ? 'fetchpriority="high"' : 'loading="lazy" decoding="async"'} />
@@ -1088,7 +1072,15 @@ function openInfoScreen(type) {
   if (type === 'depoimentos') {
     screen.innerHTML = `<div class="info-screen-shell">
       <div class="info-screen-head"><div><span>JANU TURISMO</span><h2>💬 Depoimentos</h2></div><button type="button" data-info-close aria-label="Fechar">${icon('close', 25)}</button></div>
-      <div class="info-screen-body testimonial-photo-screen"><img src="./assets/depoimento-feedback.webp?v=20261002-1345" alt="Depoimento real enviado por cliente da Janu Turismo" /></div>
+      <div class="info-screen-body feedback-screen">
+        <div class="feedback-intro"><span class="section-kicker">HISTÓRIAS DE QUEM VIAJOU</span><h3>Mais passeios, boas lembranças.</h3><p>Conheça as experiências dos viajantes da Janu Turismo.</p></div>
+        <div class="feedback-grid">${DEPOIMENTOS.map(depoimento => {
+          const foto = depoimento.foto;
+          const imagem = foto ? `<div class="feedback-photo" style="aspect-ratio:${foto[2]} / ${foto[3]}"><img src="./assets/depoimentos-painel.jpg" alt="Registro do passeio em ${escapeHtml(depoimento.passeio)}" loading="lazy" decoding="async" style="width:${888 / foto[2] * 100}%;left:${-foto[0] / foto[2] * 100}%;top:${-foto[1] / foto[3] * 100}%" /></div>` : '';
+          return `<article class="feedback-card">${imagem}<div class="feedback-card-body"><div class="feedback-destination"><span>${escapeHtml(depoimento.passeio)}</span><small>${escapeHtml(depoimento.local)}</small></div><blockquote><span class="feedback-quote" aria-hidden="true">“</span><p>${escapeHtml(depoimento.texto)}</p></blockquote><footer><strong>${escapeHtml(depoimento.nome)}</strong><span class="feedback-stars" aria-label="5 estrelas">★★★★★</span></footer></div></article>`;
+        }).join('')}</div>
+        <a class="feedback-contact" href="${waLink('Olá, Janu Turismo! Quero conhecer as próximas viagens.')}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Faça parte dessas histórias ${icon('arrowRight', 18)}</a>
+      </div>
     </div>`;
   } else if (type === 'politicas') {
     screen.innerHTML = `<div class="info-screen-shell">

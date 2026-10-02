@@ -58,10 +58,11 @@ jobs:
 
       - name: Verify live Firebase release
         run: |
+          EXPECTED_BUILD="$(node --input-type=module -e 'import fs from "node:fs"; const html = fs.readFileSync("dist/index.html", "utf8"); const match = html.match(/name="janu-build" content="([^"]+)"/); if (!match) process.exit(1); process.stdout.write(match[1]);')"
           for i in 1 2 3 4 5 6; do
-            LIVE="$(curl -fsSL -H 'Cache-Control: no-cache' 'https://janu-turismo-ce.web.app/?build=20261002-1345' || true)"
-            if echo "$LIVE" | grep -q 'name="janu-build" content="20261002-1345"'; then
-              echo "Versão 20261002-1345 confirmada no site oficial."
+            LIVE="$(curl -fsSL -H 'Cache-Control: no-cache' "https://janu-turismo-ce.web.app/?build=$EXPECTED_BUILD" || true)"
+            if echo "$LIVE" | grep -Fq "name=\"janu-build\" content=\"$EXPECTED_BUILD\""; then
+              echo "Versão $EXPECTED_BUILD confirmada no site oficial."
               exit 0
             fi
             echo "Aguardando propagação do Firebase... tentativa $i"

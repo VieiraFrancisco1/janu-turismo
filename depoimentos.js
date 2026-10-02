@@ -1,0 +1,26 @@
+// Relatos transcritos do painel de depoimentos enviado pela agência.
+// Os recortes indicam apenas as fotos no painel original (888 × 1536).
+export const DEPOIMENTOS = [
+  { nome: 'Cliente', passeio: 'Beach Park', local: 'Aquiraz · CE', foto: [30, 238, 263, 124],
+    texto: 'A Janu Turismo muito obrigada. […] Foi tudo perfeito.' },
+  { nome: 'Cliente', passeio: 'Praia das Fontes', local: 'Beberibe · CE', foto: [328, 239, 228, 122],
+    texto: 'Bom dia Janu! Passando aqui só pra agradecer a recepção e o cuidado que vocês tiveram com a gente na viagem. Foi maravilhoso!' },
+  { nome: 'Cliente', passeio: 'Diversos passeios', local: 'Ceará', foto: [590, 240, 266, 121],
+    texto: 'Bom dia! Passando aqui para agradecer pelo passeio maravilhoso e pelo cuidado, carinho, com os seus clientes. Já são quatro anos de passeios incríveis com a Janu Turismo. Até a próxima. E Deus quiser!' },
+  { nome: 'Cliente', passeio: 'Passeios em grupo', local: 'Ceará', foto: [31, 559, 275, 124],
+    texto: 'Olá, bom dia! Venho aqui agradecer a Janu Turismo pelo passeio maravilhoso. Mais uma vez, superou nossas expectativas com a sua lembrança, organização e pontualidade, deixando a viagem ainda mais especial. Muito obrigada!' },
+  { nome: 'Cliente', passeio: 'Passeios de barco', local: 'Ceará', foto: [339, 557, 213, 126],
+    texto: 'Você e sua equipe estão de parabéns, com certeza iremos novamente, atenção, conforto, um passeio incrível! Todos nós amamos muito.' },
+  { nome: 'Cliente', passeio: 'Diversos passeios', local: 'Ceará',
+    texto: 'Quero agradecer a Janu Turismo por toda a organização, cuidado e dedicação durante nossa excursão. Foi uma experiência incrível! Obrigado por tornar essa viagem tão especial. Que venham muitos outros! 🙌' },
+  { nome: 'Cliente', passeio: 'Diversos passeios', local: 'Ceará',
+    texto: 'Atenção, organização e tudo de ótima forma no passeio. […] Amei demais!' },
+  { nome: 'Flávia Janaína Mello Ferreira', passeio: 'Diversos passeios', local: 'Ceará',
+    texto: 'Foi a minha primeira viagem com você e precisava ser perfeito! Todos os detalhes superaram as minhas expectativas. O atendimento foi excelente, o transporte muito organizado, os profissionais atenciosos e um roteiro que realmente funciona, com muita segurança e conforto. \n\nA sensação foi de viver momentos inesquecíveis, com paisagens paradisíacas e uma experiência completa do início ao fim.\n\nJanu Turismo está de parabéns!' },
+  { nome: 'Cliente', passeio: 'Canoa Quebrada', local: 'Ceará', foto: [382, 865, 231, 127],
+    texto: 'Obrigada Janu Turismo por nos proporcionar mais uma viagem tão linda e especial. […] Amamos viajar com a melhor! 💙' },
+  { nome: 'Cliente', passeio: 'Guaramiranga', local: 'Ceará', foto: [636, 865, 216, 142],
+    texto: 'Gratidão é a palavra de ordem. Super amei estar com a minha família e com vocês!' },
+  { nome: 'Cliente', passeio: 'Mundaú', local: 'Ceará', foto: [54, 1233, 196, 111],
+    texto: 'Aproveito para renovar meu reconhecimento! […] Um passeio que realmente vale muito a pena e que recomendo de olhos fechados!' },
+];
