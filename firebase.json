@@ -2,7 +2,27 @@
   "hosting": {
     "site": "janu-turismo-ce",
     "public": "dist",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "headers": [
+      {
+        "source": "**/*.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }
+        ]
+      },
+      {
+        "source": "**/*.js",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }
+        ]
+      },
+      {
+        "source": "**/*.css",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }
+        ]
+      }
+    ]
   },
   "firestore": { "rules": "firestore.rules" }
 }
