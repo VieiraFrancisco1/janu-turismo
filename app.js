@@ -1088,7 +1088,7 @@ function openInfoScreen(type) {
   if (type === 'depoimentos') {
     screen.innerHTML = `<div class="info-screen-shell">
       <div class="info-screen-head"><div><span>JANU TURISMO</span><h2>💬 Depoimentos</h2></div><button type="button" data-info-close aria-label="Fechar">${icon('close', 25)}</button></div>
-      <div class="info-screen-body testimonial-photo-screen"><img src="./assets/depoimento-feedback.webp" alt="Depoimento real enviado por cliente da Janu Turismo" /></div>
+      <div class="info-screen-body testimonial-photo-screen"><img src="./assets/depoimento-feedback.webp?v=20261002-1345" alt="Depoimento real enviado por cliente da Janu Turismo" /></div>
     </div>`;
   } else if (type === 'politicas') {
     screen.innerHTML = `<div class="info-screen-shell">
