@@ -2639,3 +2639,88 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
     animation: none;
   }
 }
+
+
+/* CORRECAO BANNER E TOPO 2026-10-02 */
+/* Volta o hero para um layout estável e legível */
+.home-page .hero-carousel {
+  height: 188px !important;
+  overflow: hidden;
+}
+.home-page .hero-carousel .hero-slide .hero-copy {
+  width: min(88%, 500px) !important;
+  max-width: 500px !important;
+  padding: 15px 44px 28px !important;
+  justify-content: center;
+}
+.hero-carousel .hero-slide .hero-copy h2 {
+  display: block !important;
+  width: auto !important;
+  max-width: 360px !important;
+  margin-top: 5px !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  text-overflow: initial !important;
+  -webkit-line-clamp: unset !important;
+  font-size: clamp(23px, 6vw, 30px) !important;
+  line-height: 1.03 !important;
+  letter-spacing: -.04em !important;
+}
+.hero-carousel .hero-subtitle {
+  max-width: 330px !important;
+  margin-top: 3px !important;
+  font-size: 10.5px !important;
+  line-height: 1.2 !important;
+}
+.hero-info-row {
+  margin-top: 6px !important;
+}
+.hero-carousel .hero-cta {
+  width: fit-content !important;
+  min-width: 92px !important;
+  min-height: 36px !important;
+  margin-top: 7px !important;
+  padding: 7px 10px !important;
+  border-radius: 10px !important;
+  background: var(--yellow) !important;
+  color: #092e60 !important;
+  box-shadow: 0 4px 10px rgba(0,0,0,.15) !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  animation: hero-cta-breathe 1.7s ease-in-out infinite !important;
+}
+.hero-carousel .hero-cta svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+.hero-arrow {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Sobe a logo um pouco na barra superior */
+.site-header .brand {
+  transform: translateY(-5px);
+}
+.site-header .brand img {
+  display: block;
+}
+
+@media (min-width: 700px) {
+  .home-page .hero-carousel {
+    height: 220px !important;
+  }
+  .home-page .hero-carousel .hero-slide .hero-copy {
+    padding: 18px 56px 30px !important;
+  }
+  .hero-carousel .hero-slide .hero-copy h2 {
+    max-width: 460px !important;
+    font-size: 32px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-carousel .hero-cta {
+    animation: none !important;
+  }
+}
