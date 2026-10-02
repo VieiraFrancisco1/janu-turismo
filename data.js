@@ -281,15 +281,19 @@ export async function adminManualBooking(input) {
 }
 export async function adminSetStatus({ id, status }) {
   requireUser();
-  if (!['confirmed', 'cancelled'].includes(status)) throw new Error('Status inválido.');
+  if (!['pending', 'confirmed', 'cancelled'].includes(status)) throw new Error('Status inválido.');
   const bookingRef = doc(db, 'bookings', id);
   await runTransaction(db, async tx => {
     const snap = await tx.get(bookingRef);
     if (!snap.exists()) throw new Error('Reserva não encontrada.');
     const booking = snap.data();
     if (booking.status === status) return;
-    if (booking.status === 'cancelled' || (status === 'confirmed' && booking.status !== 'pending')) throw new Error('Esta reserva não pode receber essa alteração.');
-    // Reservas antigas já descontavam as vagas e não tinham seatsHeld.
+    if (booking.status === 'cancelled'
+      || (status === 'confirmed' && booking.status !== 'pending')
+      || (status === 'pending' && booking.status !== 'confirmed')) throw new Error('Esta reserva não pode receber essa alteração.');
+
+    // Pago <-> pendente muda apenas o estado do pagamento; as vagas continuam ocupadas.
+    // Cancelar continua liberando vagas quando elas estavam separadas.
     const held = booking.seatsHeld !== false;
     const tripRef = doc(db, 'trip_inventory', booking.tripId);
     if ((status === 'cancelled' && held) || (status === 'confirmed' && !held)) {
@@ -300,7 +304,7 @@ export async function adminSetStatus({ id, status }) {
       if (reserved < 0 || reserved > inventory.capacity) throw new Error('Confira a capacidade: não há vagas suficientes ou o controle está inconsistente.');
       tx.update(tripRef, { reserved });
     }
-    tx.update(bookingRef, { status, seatsHeld: status === 'confirmed', updatedAt: serverTimestamp() });
+    tx.update(bookingRef, { status, seatsHeld: status !== 'cancelled', updatedAt: serverTimestamp() });
   });
   invalidateTripCache();
 }
