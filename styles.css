@@ -1658,3 +1658,109 @@ dialog select { display: block; width: 100%; margin-top: 6px; padding: 12px 13px
 .payment-admin-box strong {
   color: #8a5a00;
 }
+
+
+/* ETAPA 4 NOVO PROMPT: políticas e confiança */
+.testimonials-note {
+  margin: 6px 0 0;
+  color: #5c7087;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.footer-links span strong {
+  margin-left: 4px;
+  color: #ffd76b;
+}
+.policies-route {
+  padding-top: 22px;
+}
+.policies-intro {
+  padding: 24px 20px;
+  border-radius: 20px;
+  background: linear-gradient(145deg, #0a3470, #0670bd);
+  color: #fff;
+}
+.policies-intro .section-kicker {
+  color: #ffd35a;
+}
+.policies-intro h1 {
+  margin: 7px 0 8px;
+  font-size: clamp(30px, 8vw, 42px);
+  line-height: 1.05;
+}
+.policies-intro p {
+  margin: 0;
+  color: #dfedfb;
+  line-height: 1.5;
+}
+.policies-nav {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 15px 0 4px;
+  scrollbar-width: none;
+}
+.policies-nav::-webkit-scrollbar { display: none; }
+.policies-nav a {
+  min-height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px;
+  border: 1px solid #d5e2ef;
+  border-radius: 999px;
+  background: #fff;
+  color: #0a5eb8;
+  font-size: 12px;
+  font-weight: 800;
+}
+.policy-route-card {
+  scroll-margin-top: 78px;
+  margin-top: 16px;
+  padding: 19px 17px;
+  border: 1px solid #dce7f1;
+  border-radius: 17px;
+  background: #fff;
+}
+.policy-route-card h2 {
+  margin: 0 0 12px;
+  color: #092c60;
+  font-size: 23px;
+}
+.policy-route-card h3 {
+  margin: 18px 0 8px;
+  color: #173f6d;
+  font-size: 16px;
+}
+.policy-route-card p,
+.policy-route-card li {
+  color: #425c76;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.policy-route-card ul {
+  margin: 0;
+  padding-left: 20px;
+}
+.policy-route-card a {
+  color: #075fc6;
+  font-weight: 800;
+}
+.policy-route-warning {
+  margin-top: 14px;
+  padding: 12px 13px;
+  border-left: 4px solid #d49716;
+  border-radius: 9px;
+  background: #fff8e6;
+  color: #684f1e;
+  font-size: 12px;
+  line-height: 1.5;
+}
+@media (min-width: 700px) {
+  .policies-route {
+    max-width: 860px;
+  }
+  .policy-route-card {
+    padding: 24px;
+  }
+}

@@ -1,8 +1,25 @@
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
-import { DEPOIMENTOS } from './depoimentos.js';
 import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, getCatalog, getTrips, createBooking, getBooking, myBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
+
+const DEPOIMENTOS = [
+  {
+    nome: 'Cliente 1 [SUBSTITUIR]',
+    passeio: 'Passeio [SUBSTITUIR]',
+    texto: '[SUBSTITUIR] Inserir aqui um depoimento real, com autorização do cliente.',
+  },
+  {
+    nome: 'Cliente 2 [SUBSTITUIR]',
+    passeio: 'Passeio [SUBSTITUIR]',
+    texto: '[SUBSTITUIR] Inserir aqui um depoimento real, com autorização do cliente.',
+  },
+  {
+    nome: 'Cliente 3 [SUBSTITUIR]',
+    passeio: 'Passeio [SUBSTITUIR]',
+    texto: '[SUBSTITUIR] Inserir aqui um depoimento real, com autorização do cliente.',
+  },
+];
 const AGENCY_INFO = {
   instagram: 'https://www.instagram.com/januturismo_/',
   instagramHandle: '@januturismo_',
@@ -491,29 +508,23 @@ function trustBand() {
 }
 
 function testimonialsSection() {
-  const testimonials = DEPOIMENTOS.filter(item => item.publicado && item.autorizado);
-  if (!testimonials.length) return '';
   return `<section class="testimonials-section" aria-labelledby="testimonials-title">
-    <div class="section-heading testimonials-heading"><div><span class="section-kicker">QUEM VIAJOU COM A JANU</span><h2 id="testimonials-title">Depoimentos</h2></div></div>
-    <div class="testimonials-grid">${testimonials.map(item => `<article class="testimonial-card">
-      ${item.foto ? `<img src="${escapeHtml(item.foto)}" alt="" loading="lazy" decoding="async" />` : '<span class="testimonial-avatar" aria-hidden="true">J</span>'}
-      <div><p>“${escapeHtml(item.texto)}”</p><strong>${escapeHtml(item.nome || 'Cliente da Janu')}</strong><small>${escapeHtml(item.passeio)}</small></div>
+    <div class="section-heading testimonials-heading"><div><span class="section-kicker">DEPOIMENTOS</span><h2 id="testimonials-title">Quem viaja com a Janu</h2><p class="testimonials-note">Exemplos temporários — substituir por relatos reais autorizados.</p></div></div>
+    <div class="testimonials-grid">${DEPOIMENTOS.map(item => `<article class="testimonial-card">
+      <span class="testimonial-avatar" aria-hidden="true">J</span>
+      <div><p>${escapeHtml(item.texto)}</p><strong>${escapeHtml(item.nome)}</strong><small>${escapeHtml(item.passeio)}</small></div>
     </article>`).join('')}</div>
   </section>`;
 }
 
 function siteFooter({ compact = false } = {}) {
-  const registry = AGENCY_INFO.registry.verified
-    ? `<span>Cadastur · ${escapeHtml(AGENCY_INFO.registry.value)}</span>`
-    : '';
   return `<footer class="site-footer ${compact ? 'site-footer-compact' : ''}">
     <div class="footer-brand"><img src="./assets/logo-janu.png" alt="Janu Turismo" loading="lazy" decoding="async" /><p>Viagens e passeios saindo do interior do Ceará.</p></div>
     <div class="footer-links">
       <a href="${AGENCY_INFO.instagram}" target="_blank" rel="noopener noreferrer">${AGENCY_INFO.instagramHandle}</a>
       <a href="${waLink('Olá, Janu Turismo! Vim pelo site e gostaria de atendimento.')}" target="_blank" rel="noopener noreferrer">WhatsApp (88) 98873-7924</a>
-      <a href="/politica-reservas.html">Política de reservas</a>
-      <a href="/politica-cancelamento.html">Política de cancelamento</a>
-      ${registry}
+      <a href="#/politicas">Políticas de reservas, cancelamento e privacidade</a>
+      <span>Cadastur/CNPJ: ${escapeHtml(AGENCY_INFO.registry.value)} <strong>[CONFIRMAR]</strong></span>
     </div>
     <small>© ${new Date().getFullYear()} Janu Turismo.</small>
   </footer>`;
@@ -827,7 +838,7 @@ function detailSections(trip) {
     </div>
     ${route.length ? `<section class="detail-section"><h2>Roteiro do passeio</h2><ol class="stops-list">${route.map((name, index) => `<li><span class="stop-number">${String(index + 1).padStart(2, '0')}</span><span><strong>${escapeHtml(name)}</strong></span></li>`).join('')}</ol></section>` : ''}
     <section class="detail-section"><h2>Embarques</h2>${tripBoardingCities(trip).length ? `<div class="boarding-options">${tripBoardingCities(trip).map(place => `<span>${icon('pin', 17)} ${escapeHtml(place)}</span>`).join('')}</div>` : `<div class="pending-info">${icon('pin', 22)}<span>Cidades de embarque a confirmar com a agência.</span></div>`}</section>
-    <section class="detail-section policy-summary" id="policy-summary"><span class="section-kicker">ANTES DE RESERVAR</span><h2>Resumo das políticas</h2><ul><li>Reserva efetivada mediante pagamento parcial no ato.</li><li>O restante deve ser quitado até 48h antes do passeio.</li><li>Pagamento por Pix ou cartão; não aceitamos dinheiro em espécie nem pagamento no momento do embarque.</li><li>Vagas são limitadas e a disponibilidade final é confirmada pela Janu.</li></ul><div class="policy-summary-links"><a href="/politica-reservas.html">Política de reservas</a><a href="/politica-cancelamento.html">Política de cancelamento</a></div></section>`;
+    <section class="detail-section policy-summary" id="policy-summary"><span class="section-kicker">ANTES DE RESERVAR</span><h2>Resumo das políticas</h2><ul><li>Reserva efetivada mediante pagamento parcial no ato.</li><li>O restante deve ser quitado até 48h antes do passeio.</li><li>Pagamento por Pix ou cartão; não aceitamos dinheiro em espécie nem pagamento no momento do embarque.</li><li>Vagas são limitadas e a disponibilidade final é confirmada pela Janu.</li></ul><div class="policy-summary-links"><a href="#/politicas">Política de reservas</a><a href="#/politicas">Política de cancelamento</a></div></section>`;
 }
 
 function renderDetail(id) {
@@ -861,7 +872,7 @@ function renderDetail(id) {
             ${trip.regraCrianca ? `<div class="child-rule">${icon('user', 20)}<div><strong>Regra para crianças</strong><span>${escapeHtml(trip.regraCrianca)}</span></div></div>` : ''}
             <div class="booking-total-card"><span>Valor total</span><strong data-config-total>${money(fareOptions[0]?.amount || 0)}</strong><small>O valor considera a opção e a quantidade escolhidas.</small></div>
             <div class="payment-calculator"><h3>Formas de pagamento</h3><div data-payment-calculator></div></div>
-            <label class="policy-check"><input type="checkbox" name="policies" required /><span>Li e aceito as <a href="/politica-reservas.html" target="_blank" rel="noopener">políticas de reserva</a> e <a href="/politica-cancelamento.html" target="_blank" rel="noopener">cancelamento</a>.</span></label>
+            <label class="policy-check"><input type="checkbox" name="policies" required /><span>Li e aceito as <a href="#/politicas" target="_blank" rel="noopener">políticas de reserva</a> e <a href="#/politicas" target="_blank" rel="noopener">cancelamento</a>.</span></label>
             <a class="waitlist-cta" data-waitlist hidden href="${waLink(`Olá! Quero entrar na lista de espera do passeio ${trip.title} (${trip.date}). Podem me avisar se surgir vaga?`)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 21)} Entrar na lista de espera</a>
           </form>
         </section>
@@ -940,12 +951,17 @@ function validCpfClient(value) {
 }
 
 async function shareTrip(trip) {
-  const url = `${location.origin}/passeio/${encodeURIComponent(trip.id)}/`;
+  const url = `${location.origin}${location.pathname}#/viagem/${encodeURIComponent(trip.id)}`;
+  const text = `${trip.title} · ${trip.date} · a partir de ${money(trip.price)}`;
   try {
-    if (navigator.share) await navigator.share({ title: `${trip.title} | Janu Turismo`, url });
-    else { await navigator.clipboard.writeText(url); showToast('Link da viagem copiado'); }
+    if (navigator.share) {
+      await navigator.share({ title: `${trip.title} | Janu Turismo`, text, url });
+    } else {
+      await navigator.clipboard.writeText(`${text}\n${url}`);
+      showToast('Informações da viagem copiadas');
+    }
   } catch (error) {
-    if (error.name !== 'AbortError') showToast('Não foi possível compartilhar o link');
+    if (error.name !== 'AbortError') showToast('Não foi possível compartilhar a viagem');
   }
 }
 
@@ -955,6 +971,73 @@ function showToast(message) {
   toast.classList.add('show');
   clearTimeout(showToast.timer);
   showToast.timer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+function renderPolicies() {
+  app.innerHTML = `${header()}<main class="wrap page policies-route" id="main">
+    <div class="policies-intro"><span class="section-kicker">INFORMAÇÕES IMPORTANTES</span><h1>Políticas da Janu Turismo</h1><p>Leia as condições de reserva, cancelamento e privacidade antes de concluir sua viagem.</p></div>
+
+    <nav class="policies-nav" aria-label="Seções das políticas">
+      <a href="#policy-reservas">Reservas e pagamento</a>
+      <a href="#policy-cancelamento">Cancelamento</a>
+      <a href="#policy-privacidade">Privacidade</a>
+    </nav>
+
+    <section class="policy-route-card" id="policy-reservas">
+      <h2>Reservas e pagamento</h2>
+      <ul>
+        <li>A reserva é efetivada mediante pagamento parcial no ato.</li>
+        <li>O restante deve ser quitado até 48 horas antes do passeio.</li>
+        <li>As formas de pagamento aceitas são Pix ou cartão.</li>
+        <li>Não aceitamos dinheiro em espécie.</li>
+        <li>Não aceitamos pagamento no momento do embarque.</li>
+        <li>As vagas são limitadas e dependem de disponibilidade.</li>
+      </ul>
+    </section>
+
+    <section class="policy-route-card" id="policy-cancelamento">
+      <h2>Cancelamento</h2>
+      <h3>Pedido do cliente</h3>
+      <ul>
+        <li>Até 7 dias antes: reembolso de 50% do valor pago, descontados custos operacionais e despesas não recuperáveis.</li>
+        <li>Até 48 horas antes: multa de 20% do valor total e possibilidade de nova data, conforme disponibilidade.</li>
+        <li>Por doença, com aviso prévio de 48 horas e atestado médico: possibilidade de nova data ou reembolso, conforme análise.</li>
+        <li>24 horas antes ou em caso de não comparecimento: não reembolsável.</li>
+      </ul>
+      <div class="policy-route-warning"><strong>[CONFIRMAR]</strong> As regras de “até 7 dias” e “até 48 horas” se sobrepõem. <!-- TODO: confirmar com a Janu Turismo o intervalo exato de aplicação de cada regra. --> Até essa definição, a Janu deve confirmar qual condição se aplica ao caso.</div>
+
+      <h3>Iniciativa da Janu Turismo</h3>
+      <ul>
+        <li>Em caso de adiamento ou de o mínimo de reservas não ser atingido: remarcação, crédito válido por 6 meses ou reembolso integral.</li>
+        <li>O reembolso pode ocorrer em até 30 dias úteis.</li>
+        <li>Despesas antecipadas comprovadas podem ser descontadas quando aplicável.</li>
+        <li>No cartão, considera-se o valor efetivamente recebido pela Janu Turismo, sem as taxas cobradas pela operadora.</li>
+      </ul>
+    </section>
+
+    <section class="policy-route-card" id="policy-privacidade">
+      <h2>Privacidade e proteção de dados</h2>
+      <p>A Janu Turismo coleta apenas os dados necessários para identificação, contato, organização da viagem e gestão das reservas.</p>
+      <h3>Dados que podem ser coletados</h3>
+      <ul>
+        <li>Nome e sobrenome.</li>
+        <li>E-mail.</li>
+        <li>Telefone.</li>
+        <li>CPF, quando necessário para a reserva.</li>
+        <li>Viagem escolhida, quantidade de passageiros, embarque e forma de pagamento.</li>
+      </ul>
+      <h3>Para que os dados são usados</h3>
+      <ul>
+        <li>Registrar e localizar reservas.</li>
+        <li>Entrar em contato sobre a viagem, pagamento, embarque ou alterações do passeio.</li>
+        <li>Organizar a lista de passageiros e o atendimento da agência.</li>
+      </ul>
+      <p>Para solicitar correção ou exclusão de dados pessoais, entre em contato com a Janu Turismo pelo WhatsApp <a href="${waLink('Olá, Janu Turismo! Gostaria de solicitar correção ou exclusão dos meus dados pessoais.')}" target="_blank" rel="noopener noreferrer">(88) 98873-7924</a>.</p>
+    </section>
+
+    ${siteFooter({ compact: true })}
+  </main>${bottomNav('contact')}`;
+  document.title = 'Políticas | Janu Turismo';
 }
 
 function renderContact() {
@@ -1218,6 +1301,7 @@ function render() {
   else if (route[0] === 'gestao') renderAdmin();
   else if (route[0] === 'viagens') renderTrips();
   else if (route[0] === 'contato') renderContact();
+  else if (route[0] === 'politicas') renderPolicies();
   else renderHome();
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
