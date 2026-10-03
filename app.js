@@ -1903,6 +1903,8 @@ async function loadAdmin() {
 function render() {
   disposeAdminExpiry();
   disposeAdminExpiry = () => {};
+  disposeInventory();
+  disposeInventory = () => {};
   disposeBookings();
   disposeBookings = () => {};
   document.querySelectorAll('.booking-auth-dialog').forEach(dialog => { dialog.close(); dialog.remove(); });
