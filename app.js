@@ -1,6 +1,7 @@
 import { cearaDate, tripDeadline, reservationDeadline, watchDeadlines } from './reservation-lifecycle.js';
 import { bookingId } from './booking-model.js';
 import { photoCarouselMarkup, explorePhotosMarkup, initPhotoGallery } from './photo-gallery.js';
+import { startBookingAnimation } from './booking-animation.js';
 import { initScrollGuide } from './scroll-guide.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
 import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, watchTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking, adminCreatePhoneAccount, adminSetCurrentPassword, isProvisionedAdminAccount, adminAccess } from './data.js';
@@ -1016,7 +1017,9 @@ function renderDetail(id) {
     operationId ||= bookingId();
     try { sessionStorage.setItem(pendingKey, operationId); } catch {}
 
+    let animation;
     try {
+      animation = startBookingAnimation();
       const { booking } = await createBooking({
         id: operationId,
         fareIndex: Number(fareSelect.value), quantity,
@@ -1033,6 +1036,7 @@ function renderDetail(id) {
       });
 
       try { sessionStorage.removeItem(pendingKey); } catch {}
+      await animation.finished;
       if (!form.isConnected) return;
       lastBooking = { booking, token: booking.id };
       showToast('Reserva salva na sua conta.');
@@ -1043,6 +1047,7 @@ function renderDetail(id) {
       warning.hidden = false;
       warning.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } finally {
+      animation?.close();
       submitting = false;
       button.dataset.saving = 'false';
       button.removeAttribute('aria-busy');
