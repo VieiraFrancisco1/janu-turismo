@@ -8,10 +8,11 @@ service cloud.firestore {
     function bookingPath(id) { return /databases/$(database)/documents/bookings/$(id); }
     function catalogPath(id) { return /databases/$(database)/documents/trip_catalog/$(id); }
     function validInventory(d) {
-      return d.keys().hasOnly(['capacity', 'reserved', 'demo', 'enabled', 'lastBookingId'])
+      return d.keys().hasOnly(['capacity', 'reserved', 'demo', 'enabled', 'lastBookingId', 'publicVacancyStatus'])
         && d.capacity is int && d.capacity >= 0 && d.capacity <= 500
         && d.reserved is int && d.reserved >= 0 && d.reserved <= d.capacity
-        && d.demo is bool && d.enabled is bool;
+        && d.demo is bool && d.enabled is bool
+        && (!d.keys().hasAny(['publicVacancyStatus']) || d.publicVacancyStatus in ['available', 'last-spots']);
     }
     function validPrice(d) {
       let trip = get(catalogPath(d.tripId)).data;

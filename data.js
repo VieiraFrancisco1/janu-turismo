@@ -117,15 +117,15 @@ export async function getTrips(ids = []) {
     const snapshots = await Promise.all(missing.map(id => getDoc(doc(db, 'trip_inventory', id))));
     snapshots.forEach((snap, i) => {
       const id = missing[i];
-      const data = snap.exists() ? snap.data() : { capacity: 0, reserved: 0, enabled: false, demo: true };
+      const data = snap.exists() ? snap.data() : { capacity: 0, reserved: 0, enabled: false, demo: true, publicVacancyStatus: 'available' };
       tripCache.set(id, {
-        value: { id, ...data, available: data.capacity - data.reserved },
+        value: { id, publicVacancyStatus: 'available', ...data, available: data.capacity - data.reserved },
         expiresAt: Date.now() + CACHE_TTL_MS,
       });
     });
   }
 
-  return ids.map(id => ({ ...(tripCache.get(id)?.value || { id, capacity: 0, reserved: 0, enabled: false, demo: true, available: 0 }) }));
+  return ids.map(id => ({ ...(tripCache.get(id)?.value || { id, capacity: 0, reserved: 0, enabled: false, demo: true, publicVacancyStatus: 'available', available: 0 }) }));
 }
 
 export function watchTrips(ids = [], onChange, onError = () => {}) {
@@ -138,8 +138,8 @@ export function watchTrips(ids = [], onChange, onError = () => {}) {
   return onSnapshot(collection(db, 'trip_inventory'), snapshot => {
     const byId = new Map(snapshot.docs.map(item => [item.id, item.data()]));
     const trips = wanted.map(id => {
-      const data = byId.get(id) || { capacity: 0, reserved: 0, enabled: false, demo: true };
-      const value = { id, ...data, available: Math.max(0, Number(data.capacity || 0) - Number(data.reserved || 0)) };
+      const data = byId.get(id) || { capacity: 0, reserved: 0, enabled: false, demo: true, publicVacancyStatus: 'available' };
+      const value = { id, publicVacancyStatus: 'available', ...data, available: Math.max(0, Number(data.capacity || 0) - Number(data.reserved || 0)) };
       tripCache.set(id, { value, expiresAt: Date.now() + CACHE_TTL_MS });
       return { ...value };
     });
@@ -313,16 +313,17 @@ export async function adminGet(ids = []) {
   const [trips, snap, catalog] = await Promise.all([getTrips(ids), getDocs(query(collection(db, 'bookings'), orderBy('createdAt', 'desc'))), getCatalog()]);
   return { trips: trips.filter(item => { const deadline = tripDeadline(catalog.find(trip => trip.id === item.id) || {}); return deadline === null || Date.now() < deadline; }), bookings: snap.docs.map(doc => doc.data()).filter(item => reservationVisible(item, catalog)), catalog };
 }
-export async function adminSetCapacity({ tripId, capacity, enabled }) {
+export async function adminSetCapacity({ tripId, capacity, enabled = true, publicVacancyStatus = 'available' }) {
   requireUser();
   if (!validTripId(tripId) || !Number.isInteger(capacity) || capacity < 0 || capacity > 500) throw new Error('Capacidade inválida.');
+  if (!['available', 'last-spots'].includes(publicVacancyStatus)) throw new Error('Escolha como as vagas devem aparecer no site.');
   const ref = doc(db, 'trip_inventory', tripId);
   await runTransaction(db, async tx => {
     const snap = await tx.get(ref);
-    const reserved = snap.exists() ? snap.data().reserved : 0;
+    const reserved = snap.exists() ? Number(snap.data().reserved || 0) : 0;
     if (capacity < reserved) throw new Error('A capacidade não pode ser menor que os lugares reservados.');
-    if (snap.exists()) tx.update(ref, { capacity, demo: false, enabled: Boolean(enabled) });
-    else tx.set(ref, { capacity, reserved: 0, demo: false, enabled: Boolean(enabled) });
+    if (snap.exists()) tx.update(ref, { capacity, demo: false, enabled: Boolean(enabled), publicVacancyStatus });
+    else tx.set(ref, { capacity, reserved: 0, demo: false, enabled: Boolean(enabled), publicVacancyStatus });
   });
   invalidateTripCache(tripId);
 }
@@ -339,8 +340,13 @@ export async function adminSaveTrip(trip) {
       (trip.pixMax != null && (!Array.isArray(trip.pixMax) || trip.pixMax.length > 12 || trip.pixMax.some(rule => !Number.isInteger(rule.daysMin) || rule.daysMin < 0 || rule.daysMin > 730 || !Number.isInteger(rule.maxInstallments) || rule.maxInstallments < 1 || rule.maxInstallments > 24))) ||
       !Array.isArray(trip.images) || trip.images.length > 4 || trip.images.some(image => typeof image !== 'string' || image.length > 160000 || (!image.startsWith('data:image/jpeg;base64,') && !/^\.\/assets\/[a-zA-Z0-9_-]+\.(webp|png|jpe?g)$/.test(image)))) throw new Error('Confira os dados e fotos da viagem.');
   const { id, ...fields } = prepareCatalog(trip);
+  const ref = doc(db, 'trip_catalog', id);
+  const existing = await getDoc(ref);
+  if (existing.exists() && Number(existing.data().seedRevision || 0) > Number(fields.seedRevision || 0)) {
+    fields.seedRevision = Number(existing.data().seedRevision || 0);
+  }
   fields.bookingClosesAt = Timestamp.fromDate(bookingClosesAt(trip));
-  await setDoc(doc(db, 'trip_catalog', id), fields);
+  await setDoc(ref, fields);
   invalidateCatalogCache();
 }
 export async function adminManualBooking(input) {

@@ -3574,3 +3574,86 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
   color: var(--muted);
   font-size: 13px;
 }
+
+
+/* Controle interno de vagas da proprietária */
+.admin-vacancy-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(120px, .7fr) minmax(150px, .9fr) auto;
+  align-items: end;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid #d8e5f1;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+.admin-vacancy-control > div {
+  align-self: center;
+}
+.admin-vacancy-control > div strong,
+.admin-vacancy-control > div small {
+  display: block;
+}
+.admin-vacancy-control > div strong {
+  margin-top: 3px;
+  color: #173c66;
+  font-size: 15px;
+}
+.admin-vacancy-control > div small {
+  margin-top: 3px;
+  color: #71859a;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.admin-vacancy-control label {
+  display: grid;
+  gap: 5px;
+  color: #36536f;
+  font-size: 11px;
+  font-weight: 800;
+}
+.admin-vacancy-control input,
+.admin-vacancy-control select {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid #cbdceb;
+  border-radius: 9px;
+  background: #fff;
+  color: #173c66;
+  font: inherit;
+}
+.admin-vacancy-control button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.admin-vacancy-control .form-error {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+@media (max-width: 720px) {
+  .admin-vacancy-control {
+    grid-template-columns: 1fr 1fr;
+  }
+  .admin-vacancy-control > div,
+  .admin-vacancy-control button,
+  .admin-vacancy-control .form-error {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 460px) {
+  .admin-vacancy-control {
+    grid-template-columns: 1fr;
+  }
+  .admin-vacancy-control > * {
+    grid-column: 1 !important;
+  }
+}
