@@ -1589,55 +1589,73 @@ function passengerGroupsMarkup(bookings) {
 function adminReservationsByTripMarkup(trips, bookings) {
   const sortedTrips = [...trips].sort((a, b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {}));
   if (!sortedTrips.length) return '<p class="empty-state">Nenhuma viagem disponível para gerenciar reservas.</p>';
-  const validOpen = adminOpenTrip && sortedTrips.some(trip => trip.id === adminOpenTrip);
-  const openTripId = validOpen ? adminOpenTrip : sortedTrips[0].id;
-  adminOpenTrip = openTripId;
 
   return sortedTrips.map(trip => {
     const catalogTrip = TRIPS.find(item => item.id === trip.id);
-    const tripBookings = bookings.filter(booking => booking.tripId === trip.id);
-    const activeBookings = tripBookings.filter(booking => booking.status !== 'cancelled');
+    const tripBookings = bookings.filter(booking => booking.tripId === trip.id && booking.status !== 'cancelled');
     const paidCount = tripBookings.filter(booking => booking.status === 'confirmed').length;
     const pendingCount = tripBookings.filter(booking => booking.status === 'pending').length;
-    const isOpen = trip.id === openTripId;
-    return `<section class="admin-reservation-trip ${isOpen ? 'is-open' : ''}">
-      <button class="admin-reservation-trip-toggle" type="button" data-admin-trip-open="${escapeHtml(trip.id)}" aria-expanded="${isOpen}">
-        <span><small>${escapeHtml(catalogTrip?.date || 'Data a confirmar')}</small><strong>${escapeHtml(tripName(trip.id))}</strong></span>
-        <span class="admin-trip-count">${tripBookings.length} ${tripBookings.length === 1 ? 'reserva' : 'reservas'} ${icon('arrowRight', 18)}</span>
-      </button>
-      <div class="admin-reservation-trip-body" data-admin-trip-body="${escapeHtml(trip.id)}" ${isOpen ? '' : 'hidden'}>
-        <div class="admin-seat-metrics">
-          <div><span>Total de vagas</span><strong>${trip.demo ? '—' : trip.capacity}</strong></div>
-          <div><span>Preenchidas</span><strong>${trip.demo ? activeBookings.reduce((sum, booking) => sum + Number(booking.seats || 0), 0) : trip.reserved}</strong></div>
-          <div><span>Faltam</span><strong>${trip.demo ? '—' : trip.available}</strong></div>
-        </div>
-        <div class="admin-payment-summary">
-          <span class="admin-payment-summary-paid">${paidCount} ${paidCount === 1 ? 'pago' : 'pagos'}</span>
-          <span class="admin-payment-summary-pending">${pendingCount} ${pendingCount === 1 ? 'pendente' : 'pendentes'}</span>
-        </div>
-        <div class="admin-trip-bookings">
-          ${tripBookings.length ? tripBookings.map(booking => {
-            const paid = booking.status === 'confirmed';
-            const cancelled = booking.status === 'cancelled';
-            return `<article class="admin-reservation-person booking-state-${escapeHtml(booking.status)}">
-              <div class="admin-reservation-person-head">
-                <div><strong>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)}</strong><small>${escapeHtml(booking.id)}</small></div>
-                <span class="admin-payment-badge ${paid ? 'is-paid' : cancelled ? 'is-cancelled' : 'is-pending'}">${paymentStatusLabel(booking.status)}</span>
-              </div>
-              <p>${booking.seats} ${booking.seats === 1 ? 'passageiro' : 'passageiros'} · ${paymentLabel(booking.payment)}${Number.isInteger(booking.totalCents) ? ` · ${money(booking.totalCents / 100)}` : ''}</p>
-              <p>${escapeHtml(booking.phone)} · Embarque: ${escapeHtml(booking.boarding || 'A combinar')}</p>
-              <div class="admin-reservation-actions">
-                ${booking.status === 'pending' ? `<button class="admin-paid-button" type="button" data-action="confirmed" data-id="${escapeHtml(booking.id)}">Marcar como pago</button>` : ''}
-                ${booking.status === 'confirmed' ? `<button class="admin-pending-button" type="button" data-action="pending" data-id="${escapeHtml(booking.id)}">Marcar como pendente</button>` : ''}
-                ${booking.status !== 'cancelled' ? `<a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
-                <button class="admin-delete-button" type="button" data-delete-booking="${escapeHtml(booking.id)}">Excluir</button>
-              </div>
-            </article>`;
-          }).join('') : '<p class="empty-state compact-empty">Ainda não há reservas nessa viagem.</p>'}
-        </div>
-      </div>
-    </section>`;
+    return `<a class="admin-reservation-trip-link" href="#/gestao/reservas/${encodeURIComponent(trip.id)}">
+      <span class="admin-reservation-trip-main">
+        <small>${escapeHtml(catalogTrip?.date || 'Data a confirmar')}</small>
+        <strong>${escapeHtml(tripName(trip.id))}</strong>
+        <span>${tripBookings.length} ${tripBookings.length === 1 ? 'cliente com reserva' : 'clientes com reserva'}</span>
+      </span>
+      <span class="admin-reservation-trip-status">
+        <small class="admin-payment-summary-paid">${paidCount} ${paidCount === 1 ? 'pago' : 'pagos'}</small>
+        <small class="admin-payment-summary-pending">${pendingCount} ${pendingCount === 1 ? 'pendente' : 'pendentes'}</small>
+        ${icon('arrowRight', 20)}
+      </span>
+    </a>`;
   }).join('');
+}
+
+function adminTripReservationsMarkup(trip, bookings) {
+  const catalogTrip = TRIPS.find(item => item.id === trip.id);
+  const tripBookings = bookings.filter(booking => booking.tripId === trip.id);
+  const activeBookings = tripBookings.filter(booking => booking.status !== 'cancelled');
+  const paidCount = activeBookings.filter(booking => booking.status === 'confirmed').length;
+  const pendingCount = activeBookings.filter(booking => booking.status === 'pending').length;
+  const filled = trip.demo ? activeBookings.reduce((sum, booking) => sum + Number(booking.seats || 0), 0) : trip.reserved;
+
+  return `<section class="admin-trip-reservations-page">
+    <a class="admin-reservations-back" href="#/gestao">${icon('arrowLeft', 18)} Voltar para Reservas por viagem</a>
+    <div class="admin-trip-reservations-heading">
+      <span class="section-kicker">RESERVAS</span>
+      <h2>${escapeHtml(tripName(trip.id))}</h2>
+      <p>${escapeHtml(catalogTrip?.date || 'Data a confirmar')}</p>
+    </div>
+    <div class="admin-seat-metrics">
+      <div><span>Total de vagas</span><strong>${trip.demo ? '—' : trip.capacity}</strong></div>
+      <div><span>Preenchidas</span><strong>${filled}</strong></div>
+      <div><span>Faltam</span><strong>${trip.demo ? '—' : trip.available}</strong></div>
+    </div>
+    <div class="admin-payment-summary">
+      <span class="admin-payment-summary-paid">${paidCount} ${paidCount === 1 ? 'pago' : 'pagos'}</span>
+      <span class="admin-payment-summary-pending">${pendingCount} ${pendingCount === 1 ? 'pendente' : 'pendentes'}</span>
+    </div>
+    <div class="admin-trip-clients">
+      ${tripBookings.length ? tripBookings.map(booking => {
+        const paid = booking.status === 'confirmed';
+        const pending = booking.status === 'pending';
+        const cancelled = booking.status === 'cancelled';
+        return `<article class="admin-reservation-person booking-state-${escapeHtml(booking.status)}">
+          <div class="admin-reservation-person-head">
+            <div><strong>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)}</strong><small>${escapeHtml(booking.id)}</small></div>
+            <span class="admin-payment-badge ${paid ? 'is-paid' : cancelled ? 'is-cancelled' : 'is-pending'}">${paymentStatusLabel(booking.status)}</span>
+          </div>
+          <p>${booking.seats} ${booking.seats === 1 ? 'passageiro' : 'passageiros'} · ${paymentLabel(booking.payment)}${Number.isInteger(booking.totalCents) ? ` · ${money(booking.totalCents / 100)}` : ''}</p>
+          <p>${escapeHtml(booking.phone)} · Embarque: ${escapeHtml(booking.boarding || 'A combinar')}</p>
+          <div class="admin-reservation-actions admin-client-actions">
+            <button class="admin-paid-button" type="button" data-action="confirmed" data-id="${escapeHtml(booking.id)}" ${paid || cancelled ? 'disabled' : ''}>Marcar pago</button>
+            <button class="admin-pending-button" type="button" data-action="pending" data-id="${escapeHtml(booking.id)}" ${pending || cancelled ? 'disabled' : ''}>Marcar pendente</button>
+            <a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">Chamar no WhatsApp</a>
+            <button class="admin-delete-button" type="button" data-delete-booking="${escapeHtml(booking.id)}">Excluir</button>
+          </div>
+        </article>`;
+      }).join('') : '<p class="empty-state compact-empty">Ainda não há clientes com reserva nessa viagem.</p>'}
+    </div>
+  </section>`;
 }
 
 function renderAdmin() {
