@@ -99,17 +99,15 @@ function tripAvailability(id) {
   if (trip.status === 'esgotado') return { key: 'sold-out', text: 'Esgotado', soldOut: true };
 
   if (!inventoryReady || !state || state.demo) {
-    if (trip.status === 'vagas-limitadas') return { key: 'last-spots', text: 'Últimas vagas', soldOut: false };
-    return { key: 'unknown', text: 'Consulte vagas', soldOut: false };
+    return { key: 'open', text: 'Vagas disponíveis', soldOut: false };
   }
 
   if (!state.enabled) return { key: 'preparing', text: 'Reservas pausadas', soldOut: true };
   if (state.available <= 0) return { key: 'sold-out', text: 'Esgotado', soldOut: true };
-  const halfCapacity = Math.max(1, Math.ceil(Number(state.capacity || 0) / 2));
-  if ((Number(state.capacity || 0) > 0 && state.available <= halfCapacity) || trip.status === 'vagas-limitadas') {
-    return { key: 'last-spots', text: `Últimas ${state.available} vagas`, soldOut: false };
+  if (state.publicVacancyStatus === 'last-spots') {
+    return { key: 'last-spots', text: 'Últimas vagas', soldOut: false };
   }
-  return { key: 'open', text: `Restam ${state.available} vagas`, soldOut: false };
+  return { key: 'open', text: 'Vagas disponíveis', soldOut: false };
 }
 
 function seatsText(id) {
@@ -174,11 +172,10 @@ function updateAvailabilityUI() {
   });
 
   document.querySelectorAll('[data-low-stock-warning]').forEach(el => {
-    const state = inventory[el.dataset.lowStockWarning];
-    const halfCapacity = state ? Math.max(1, Math.ceil(Number(state.capacity || 0) / 2)) : 0;
-    const show = inventoryReady && state && !state.demo && Number(state.capacity || 0) > 0 && state.available > 0 && state.available <= halfCapacity;
+    const status = tripAvailability(el.dataset.lowStockWarning);
+    const show = status.key === 'last-spots';
     el.hidden = !show;
-    if (show) el.textContent = `⚠️ Últimas vagas: restam ${state.available} ${state.available === 1 ? 'vaga' : 'vagas'}.`;
+    if (show) el.textContent = 'Últimas vagas. Garanta sua reserva enquanto ainda há disponibilidade.';
   });
 
   document.querySelectorAll('[data-minimum-progress]').forEach(holder => {
@@ -1666,6 +1663,24 @@ function adminTripReservationsMarkup(trip, bookings) {
       <div><span>Preenchidas</span><strong>${filled}</strong></div>
       <div><span>Faltam</span><strong>${trip.demo ? '—' : trip.available}</strong></div>
     </div>
+    <form class="admin-vacancy-control" data-capacity-control data-id="${escapeHtml(trip.id)}">
+      <div>
+        <span class="section-kicker">CONTROLE INTERNO</span>
+        <strong>Vagas da viagem</strong>
+        <small>O número é visível somente na gestão. No site público aparece apenas o aviso escolhido abaixo.</small>
+      </div>
+      <label>Total de vagas
+        <input name="capacity" type="number" min="1" max="500" value="${trip.demo ? '' : trip.capacity}" placeholder="Ex.: 40" required />
+      </label>
+      <label>Aviso no site
+        <select name="publicVacancyStatus">
+          <option value="available" ${trip.publicVacancyStatus !== 'last-spots' ? 'selected' : ''}>Vagas disponíveis</option>
+          <option value="last-spots" ${trip.publicVacancyStatus === 'last-spots' ? 'selected' : ''}>Últimas vagas</option>
+        </select>
+      </label>
+      <button type="submit">Salvar controle de vagas</button>
+      <p class="form-error" hidden></p>
+    </form>
     <div class="admin-payment-summary">
       <span class="admin-payment-summary-paid">${paidCount} ${paidCount === 1 ? 'pago' : 'pagos'}</span>
       <span class="admin-payment-summary-pending">${pendingCount} ${pendingCount === 1 ? 'pendente' : 'pendentes'}</span>
@@ -1764,8 +1779,9 @@ async function loadAdmin() {
         const ended = catalogTrip && isTripPast(catalogTrip);
         return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}">
           <div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div>
-          <span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}${!trip.demo && trip.available > 0 && trip.available <= 5 ? ` · ⚠️ Últimas ${trip.available} vagas` : ''}</span>
+          <span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.demo ? 'vagas ainda não configuradas' : `${trip.available} restantes`}</span>
           <label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label>
+          <label>Aviso público<select name="publicVacancyStatus"><option value="available" ${trip.publicVacancyStatus !== 'last-spots' ? 'selected' : ''}>Vagas disponíveis</option><option value="last-spots" ${trip.publicVacancyStatus === 'last-spots' ? 'selected' : ''}>Últimas vagas</option></select></label>
           <label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label>
           <button type="submit">Salvar vagas</button>
           <button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button>
@@ -1822,6 +1838,28 @@ async function loadAdmin() {
     }
   });
 
+  content.querySelectorAll('[data-capacity-control]').forEach(form => form.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = form.querySelector('[type="submit"]');
+    const warning = form.querySelector('.form-error');
+    button.disabled = true;
+    warning.hidden = true;
+    try {
+      await adminFetch('PUT', {
+        tripId: form.dataset.id,
+        capacity: Number(form.elements.capacity.value),
+        enabled: true,
+        publicVacancyStatus: form.elements.publicVacancyStatus.value,
+      });
+      await loadAdmin();
+      showToast('Controle de vagas atualizado.');
+    } catch (error) {
+      warning.textContent = error.message;
+      warning.hidden = false;
+      button.disabled = false;
+    }
+  }));
+
   const adminAccessForm = content.querySelector('#admin-access-form');
   adminAccessForm?.addEventListener('submit', async event => {
     event.preventDefault();
@@ -1875,7 +1913,7 @@ async function loadAdmin() {
   content.querySelectorAll('.admin-trip').forEach(form => form.addEventListener('submit', async event => {
     event.preventDefault();
     const button = form.querySelector('button'); button.disabled = true;
-    try { await adminFetch('PUT', { tripId: form.dataset.id, capacity: Number(form.elements.capacity.value), enabled: form.elements.enabled.checked }); await loadAdmin(); showToast('Vagas atualizadas'); }
+    try { await adminFetch('PUT', { tripId: form.dataset.id, capacity: Number(form.elements.capacity.value), enabled: form.elements.enabled.checked, publicVacancyStatus: form.elements.publicVacancyStatus?.value || 'available' }); await loadAdmin(); showToast('Vagas atualizadas'); }
     catch (error) { showToast(error.message); button.disabled = false; }
   }));
   content.querySelectorAll('[data-delete-booking]').forEach(button => button.addEventListener('click', async () => {
