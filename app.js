@@ -1371,6 +1371,12 @@ async function renderMyReservations() {
     bindAuth(list, render);
     return;
   }
+  const access = await adminAccess().catch(() => null);
+  if (!list.isConnected) return;
+  if (access?.owner && !access.primary) {
+    renderAdmin({ reservationsTab: true });
+    return;
+  }
   list.innerHTML = `<p class="signed-account">Conta: ${escapeHtml(accountLabel(currentUser()))} <button id="sign-out" type="button">Sair</button></p>`;
   list.querySelector('#sign-out').addEventListener('click', async () => { await logout(); render(); });
   const resultsHolder = document.createElement('div');
@@ -1397,21 +1403,34 @@ async function adminFetch(method = 'GET', body) {
 }
 
 function renderProfile() {
-  app.innerHTML = `${header()}<main class="wrap page booking-page profile-page" id="main"><div class="bookings-intro"><span class="section-kicker">SUA CONTA</span><h1>Meu perfil</h1></div><div id="profile-content"></div></main>${bottomNav('bookings')}`;
+  app.innerHTML = `${header()}<main class="wrap page booking-page profile-page" id="main"><div class="bookings-intro"><span class="section-kicker">SUA CONTA</span><h1>Meu perfil</h1></div><div id="profile-content"></div></main>${bottomNav('')}`;
+  document.title = 'Meu perfil | Janu Turismo';
   const holder = app.querySelector('#profile-content');
   authReady.then(async () => {
     if (!holder.isConnected) return;
     if (!currentUser()) {
       holder.innerHTML = authPanel('Entre ou crie sua conta');
       bindAuth(holder, async () => {
-        try { await adminFetch(); location.hash = '#/gestao'; }
-        catch { renderProfile(); }
+        try {
+          const access = await adminAccess();
+          if (!holder.isConnected) return;
+          if (access.owner && !access.primary) { location.hash = '#/reservas'; return; }
+          await adminFetch();
+          if (holder.isConnected) location.hash = '#/gestao';
+        }
+        catch { if (holder.isConnected) renderProfile(); }
       });
       return;
     }
-    try { await adminFetch(); location.hash = '#/gestao'; return; } catch { /* conta de cliente */ }
-    holder.innerHTML = `<div class="profile-card">${icon('user', 34)}<h2>${escapeHtml(currentUser().displayName || currentUser().email.split('@')[0])}</h2><p>${escapeHtml(accountLabel(currentUser()))}</p><a href="#/reservas">Minhas reservas ${icon('arrowRight', 18)}</a><div id="agency-link"></div><button id="profile-logout" type="button">Sair da conta</button></div>`;
-    holder.querySelector('#profile-logout').addEventListener('click', async () => { await logout(); renderProfile(); });
+    const access = await adminAccess().catch(() => null);
+    if (!holder.isConnected) return;
+    const ownerOnly = access?.owner && !access.primary;
+    if (access && !ownerOnly) {
+      try { await adminFetch(); if (holder.isConnected) location.hash = '#/gestao'; return; } catch { /* conta sem acesso à gestão */ }
+    }
+    if (!holder.isConnected) return;
+    holder.innerHTML = `<div class="profile-card">${icon('user', 34)}<h2>${escapeHtml(currentUser().displayName || accountLabel(currentUser()))}</h2><p>${escapeHtml(accountLabel(currentUser()))}</p><a href="#/reservas">${ownerOnly ? 'Controle de reservas' : 'Minhas reservas'} ${icon('arrowRight', 18)}</a><div id="agency-link"></div><button id="profile-logout" type="button">Sair da conta</button></div>`;
+    holder.querySelector('#profile-logout').addEventListener('click', async () => { await logout(); render(); });
   });
 }
 
@@ -1604,7 +1623,7 @@ function passengerGroupsMarkup(bookings) {
   }).join('');
 }
 
-function adminReservationsByTripMarkup(trips, bookings) {
+function adminReservationsByTripMarkup(trips, bookings, detailRoute = '#/gestao/reservas') {
   const sortedTrips = [...trips].sort((a, b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {}));
   if (!sortedTrips.length) return '<p class="empty-state">Nenhuma viagem disponível para gerenciar reservas.</p>';
 
@@ -1613,7 +1632,7 @@ function adminReservationsByTripMarkup(trips, bookings) {
     const tripBookings = bookings.filter(booking => booking.tripId === trip.id && booking.status !== 'cancelled');
     const paidCount = tripBookings.filter(booking => booking.status === 'confirmed').length;
     const pendingCount = tripBookings.filter(booking => booking.status === 'pending').length;
-    return `<a class="admin-reservation-trip-link" href="#/gestao/reservas/${encodeURIComponent(trip.id)}">
+    return `<a class="admin-reservation-trip-link" href="${detailRoute}/${encodeURIComponent(trip.id)}">
       <span class="admin-reservation-trip-main">
         <small>${escapeHtml(catalogTrip?.date || 'Data a confirmar')}</small>
         <strong>${escapeHtml(tripName(trip.id))}</strong>
@@ -1628,7 +1647,7 @@ function adminReservationsByTripMarkup(trips, bookings) {
   }).join('');
 }
 
-function adminTripReservationsMarkup(trip, bookings) {
+function adminTripReservationsMarkup(trip, bookings, backRoute = '#/gestao') {
   const catalogTrip = TRIPS.find(item => item.id === trip.id);
   const tripBookings = bookings.filter(booking => booking.tripId === trip.id);
   const activeBookings = tripBookings.filter(booking => booking.status !== 'cancelled');
@@ -1638,7 +1657,7 @@ function adminTripReservationsMarkup(trip, bookings) {
   const publicVacancyStatus = trip.demo ? (catalogTrip?.publicVacancyStatus || 'available') : (trip.publicVacancyStatus || 'available');
 
   return `<section class="admin-trip-reservations-page">
-    <a class="admin-reservations-back" href="#/gestao">${icon('arrowLeft', 18)} Voltar para Reservas por viagem</a>
+    <a class="admin-reservations-back" href="${backRoute}">${icon('arrowLeft', 18)} Voltar para Reservas por viagem</a>
     <div class="admin-trip-reservations-heading">
       <div>
         <span class="section-kicker">RESERVAS</span>
@@ -1711,8 +1730,10 @@ function adminTripReservationsMarkup(trip, bookings) {
   </section>`;
 }
 
-function renderAdmin() {
-  app.innerHTML = `<main class="wrap admin-page"><a href="#/">${icon('arrowLeft', 20)} Voltar ao site</a><h1>Gestão de reservas</h1><p>Área da Janu Turismo</p><div id="admin-login">${authPanel('Entre com a conta da agência')}</div><div id="admin-content"></div></main>`;
+function renderAdmin({ reservationsTab = false } = {}) {
+  app.innerHTML = `${reservationsTab ? header() : ''}<main class="wrap admin-page ${reservationsTab ? 'page' : ''}" id="main">${reservationsTab ? '' : `<a href="#/">${icon('arrowLeft', 20)} Voltar ao site</a>`}<h1>${reservationsTab ? 'Controle de reservas' : 'Gestão de reservas'}</h1><p>Área da Janu Turismo</p><div id="admin-login" ${reservationsTab ? 'hidden' : ''}>${authPanel('Entre com a conta da agência')}</div><div id="admin-content"><p class="loading-state">Carregando o controle de reservas…</p></div></main>${reservationsTab ? bottomNav('bookings') : ''}`;
+  document.title = `${reservationsTab ? 'Controle de reservas' : 'Gestão de reservas'} | Janu Turismo`;
+  if (reservationsTab) bindHeaderMenu();
   bindAuth(app.querySelector('#admin-login'), async () => {
     try { await loadAdmin(); app.querySelector('#admin-login').hidden = true; }
     catch { showToast('Esta conta não tem acesso à gestão.'); }
@@ -1724,9 +1745,10 @@ function renderAdmin() {
 }
 
 async function loadAdmin() {
-  const { trips, bookings } = await adminFetch();
   const content = app.querySelector('#admin-content');
   if (!content) return;
+  const { trips, bookings } = await adminFetch();
+  if (!content.isConnected) return;
   disposeAdminExpiry();
   let visibleBookings = bookings.map(booking => booking.id).join('|');
   disposeAdminExpiry = watchDeadlines(bookings.map(booking => reservationDeadline(booking, TRIPS)), () => {
@@ -1736,6 +1758,7 @@ async function loadAdmin() {
   const provisionedAdmin = await isProvisionedAdminAccount().catch(() => true);
   const isPrimaryAdmin = String(currentUser()?.email || '').toLowerCase() === '0vieira.francisco0@gmail.com';
   const access = await adminAccess().catch(() => ({ primary: isPrimaryAdmin, owner: !isPrimaryAdmin }));
+  if (!content.isConnected) return;
   const ownerOnly = access.owner && !access.primary;
   if (ownerOnly) adminActiveTab = 'bookings';
   const accessSetup = (!provisionedAdmin && isPrimaryAdmin) ? `<section class="admin-access-setup">
@@ -1753,20 +1776,27 @@ async function loadAdmin() {
     <small>Depois disso, o e-mail e o telefone entram pela mesma tela de login e são enviados direto para a gestão.</small>
   </section>` : '';
   const route = decodeURIComponent(location.hash.replace(/^#\/?/, '')).split('/').filter(Boolean);
-  const selectedTripId = route[0] === 'gestao' && route[1] === 'reservas' ? route[2] : '';
+  const reservationsTab = route[0] === 'reservas';
+  const backRoute = reservationsTab ? '#/reservas' : '#/gestao';
+  const detailRoute = reservationsTab ? '#/reservas' : '#/gestao/reservas';
+  const selectedTripId = reservationsTab ? route[1] : route[0] === 'gestao' && route[1] === 'reservas' ? route[2] : '';
+  if (ownerOnly && route[0] === 'gestao') {
+    location.hash = selectedTripId ? `#/reservas/${encodeURIComponent(selectedTripId)}` : '#/reservas';
+    return;
+  }
   const selectedTrip = selectedTripId ? trips.find(trip => trip.id === selectedTripId) : null;
 
   if (selectedTripId) {
     adminActiveTab = 'bookings';
     content.innerHTML = selectedTrip
-      ? adminTripReservationsMarkup(selectedTrip, bookings)
-      : `<section class="admin-trip-reservations-page"><a class="admin-reservations-back" href="#/gestao">${icon('arrowLeft', 18)} Voltar para Reservas por viagem</a><p class="empty-state">Essa viagem não foi encontrada ou já saiu da gestão.</p></section>`;
+      ? adminTripReservationsMarkup(selectedTrip, bookings, backRoute)
+      : `<section class="admin-trip-reservations-page"><a class="admin-reservations-back" href="${backRoute}">${icon('arrowLeft', 18)} Voltar para Reservas por viagem</a><p class="empty-state">Essa viagem não foi encontrada ou já saiu da gestão.</p></section>`;
   } else if (ownerOnly) {
     content.innerHTML = `<section class="admin-reservations-overview admin-owner-reservations">
       <span class="section-kicker">GESTÃO DA JANU</span>
       <h2>Reservas por viagem</h2>
       <p>Escolha uma viagem para ver os clientes, pagamentos e vagas atualizadas.</p>
-      <div class="admin-reservation-trips">${adminReservationsByTripMarkup(trips, bookings)}</div>
+      <div class="admin-reservation-trips">${adminReservationsByTripMarkup(trips, bookings, detailRoute)}</div>
     </section>`;
   } else {
     content.innerHTML = `${accessSetup}<div class="admin-management-tabs" role="tablist" aria-label="Gestão">
