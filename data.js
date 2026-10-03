@@ -340,8 +340,13 @@ export async function adminSaveTrip(trip) {
       (trip.pixMax != null && (!Array.isArray(trip.pixMax) || trip.pixMax.length > 12 || trip.pixMax.some(rule => !Number.isInteger(rule.daysMin) || rule.daysMin < 0 || rule.daysMin > 730 || !Number.isInteger(rule.maxInstallments) || rule.maxInstallments < 1 || rule.maxInstallments > 24))) ||
       !Array.isArray(trip.images) || trip.images.length > 4 || trip.images.some(image => typeof image !== 'string' || image.length > 160000 || (!image.startsWith('data:image/jpeg;base64,') && !/^\.\/assets\/[a-zA-Z0-9_-]+\.(webp|png|jpe?g)$/.test(image)))) throw new Error('Confira os dados e fotos da viagem.');
   const { id, ...fields } = prepareCatalog(trip);
+  const ref = doc(db, 'trip_catalog', id);
+  const existing = await getDoc(ref);
+  if (existing.exists() && Number(existing.data().seedRevision || 0) > Number(fields.seedRevision || 0)) {
+    fields.seedRevision = Number(existing.data().seedRevision || 0);
+  }
   fields.bookingClosesAt = Timestamp.fromDate(bookingClosesAt(trip));
-  await setDoc(doc(db, 'trip_catalog', id), fields);
+  await setDoc(ref, fields);
   invalidateCatalogCache();
 }
 export async function adminManualBooking(input) {
