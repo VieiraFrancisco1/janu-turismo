@@ -6,7 +6,7 @@ export function startBookingAnimation() {
   dialog.className = 'booking-animation';
   dialog.setAttribute('aria-label', 'Reservando sua viagem');
   dialog.setAttribute('aria-busy', 'true');
-  dialog.innerHTML = `<video src="${VIDEO}" poster="${POSTER}" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video><p role="status">Salvando sua reserva…</p>`;
+  dialog.innerHTML = `<video src="${VIDEO}" poster="${POSTER}" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video><p class="sr-only" role="status">Salvando sua reserva…</p>`;
   const video = dialog.querySelector('video');
   video.muted = true;
   let closed = false;
