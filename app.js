@@ -3,7 +3,7 @@ import { bookingId } from './booking-model.js';
 import { photoCarouselMarkup, explorePhotosMarkup, initPhotoGallery } from './photo-gallery.js';
 import { initScrollGuide } from './scroll-guide.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
-import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking, adminCreatePhoneAccount, adminSetCurrentPassword, isProvisionedAdminAccount } from './data.js';
+import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, watchTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking, adminCreatePhoneAccount, adminSetCurrentPassword, isProvisionedAdminAccount, adminAccess } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
 
@@ -30,6 +30,7 @@ let disposeDetailPhotos = () => {};
 let disposeBookings = () => {};
 let disposeAdminExpiry = () => {};
 let disposeTripExpiry = () => {};
+let disposeInventory = () => {};
 let adminActiveTab = 'trips';
 let adminOpenTrip = '';
 
@@ -104,8 +105,8 @@ function tripAvailability(id) {
 
   if (!state.enabled) return { key: 'preparing', text: 'Reservas pausadas', soldOut: true };
   if (state.available <= 0) return { key: 'sold-out', text: 'Esgotado', soldOut: true };
-  if (!state.enabled) return { key: 'preparing', text: 'Reservas em preparação', soldOut: false };
-  if (state.available <= 5 || trip.status === 'vagas-limitadas') {
+  const halfCapacity = Math.max(1, Math.ceil(Number(state.capacity || 0) / 2));
+  if ((Number(state.capacity || 0) > 0 && state.available <= halfCapacity) || trip.status === 'vagas-limitadas') {
     return { key: 'last-spots', text: `Últimas ${state.available} vagas`, soldOut: false };
   }
   return { key: 'open', text: `Restam ${state.available} vagas`, soldOut: false };
@@ -151,6 +152,8 @@ function updateAvailabilityUI() {
     const trip = TRIPS.find(item => item.id === el.dataset.heroVacancies);
     if (!trip) return;
     const status = tripAvailability(trip.id);
+    [...el.classList].filter(name => name.startsWith('status-')).forEach(name => el.classList.remove(name));
+    el.classList.add(`status-${status.key}`);
     if (['open', 'last-spots', 'sold-out', 'closed', 'date-pending', 'preparing'].includes(status.key)) {
       el.textContent = status.text;
       el.classList.remove('is-demo');
@@ -172,9 +175,10 @@ function updateAvailabilityUI() {
 
   document.querySelectorAll('[data-low-stock-warning]').forEach(el => {
     const state = inventory[el.dataset.lowStockWarning];
-    const show = inventoryReady && state && !state.demo && state.available > 0 && state.available <= 5;
+    const halfCapacity = state ? Math.max(1, Math.ceil(Number(state.capacity || 0) / 2)) : 0;
+    const show = inventoryReady && state && !state.demo && Number(state.capacity || 0) > 0 && state.available > 0 && state.available <= halfCapacity;
     el.hidden = !show;
-    if (show) el.textContent = `⚠️ Atenção: restam apenas ${state.available} ${state.available === 1 ? 'vaga' : 'vagas'}.`;
+    if (show) el.textContent = `⚠️ Últimas vagas: restam ${state.available} ${state.available === 1 ? 'vaga' : 'vagas'}.`;
   });
 
   document.querySelectorAll('[data-minimum-progress]').forEach(holder => {
@@ -214,12 +218,29 @@ function updateAvailabilityUI() {
   }
 }
 
-async function refreshInventory() {
-  try {
-    inventory = Object.fromEntries((await getTrips(TRIPS.map(trip => trip.id))).map(trip => [trip.id, trip]));
+function refreshInventory() {
+  disposeInventory();
+  disposeInventory = () => {};
+  const ids = TRIPS.map(trip => trip.id);
+  if (!ids.length) {
+    inventory = {};
     inventoryReady = true;
-  } catch { inventoryReady = false; }
-  updateAvailabilityUI();
+    updateAvailabilityUI();
+    return;
+  }
+  try {
+    disposeInventory = watchTrips(ids, trips => {
+      inventory = Object.fromEntries(trips.map(trip => [trip.id, trip]));
+      inventoryReady = true;
+      updateAvailabilityUI();
+    }, () => {
+      inventoryReady = false;
+      updateAvailabilityUI();
+    });
+  } catch {
+    inventoryReady = false;
+    updateAvailabilityUI();
+  }
 }
 
 function authPanel(title = 'Entre para continuar') {
@@ -1697,6 +1718,9 @@ async function loadAdmin() {
   });
   const provisionedAdmin = await isProvisionedAdminAccount().catch(() => true);
   const isPrimaryAdmin = String(currentUser()?.email || '').toLowerCase() === '0vieira.francisco0@gmail.com';
+  const access = await adminAccess().catch(() => ({ primary: isPrimaryAdmin, owner: !isPrimaryAdmin }));
+  const ownerOnly = access.owner && !access.primary;
+  if (ownerOnly) adminActiveTab = 'bookings';
   const accessSetup = (!provisionedAdmin && isPrimaryAdmin) ? `<section class="admin-access-setup">
     <div><span class="section-kicker">ACESSOS ADMINISTRATIVOS</span><h2>Configurar acessos da Janu</h2><p>Defina aqui as credenciais administrativas. As senhas são enviadas diretamente ao Firebase e não ficam salvas no código do site.</p></div>
     <form id="admin-access-form">
@@ -1720,6 +1744,13 @@ async function loadAdmin() {
     content.innerHTML = selectedTrip
       ? adminTripReservationsMarkup(selectedTrip, bookings)
       : `<section class="admin-trip-reservations-page"><a class="admin-reservations-back" href="#/gestao">${icon('arrowLeft', 18)} Voltar para Reservas por viagem</a><p class="empty-state">Essa viagem não foi encontrada ou já saiu da gestão.</p></section>`;
+  } else if (ownerOnly) {
+    content.innerHTML = `<section class="admin-reservations-overview admin-owner-reservations">
+      <span class="section-kicker">GESTÃO DA JANU</span>
+      <h2>Reservas por viagem</h2>
+      <p>Escolha uma viagem para ver os clientes, pagamentos e vagas atualizadas.</p>
+      <div class="admin-reservation-trips">${adminReservationsByTripMarkup(trips, bookings)}</div>
+    </section>`;
   } else {
     content.innerHTML = `${accessSetup}<div class="admin-management-tabs" role="tablist" aria-label="Gestão">
       <button type="button" data-admin-tab="trips" class="${adminActiveTab === 'trips' ? 'is-active' : ''}">Viagens e vagas</button>
