@@ -1696,10 +1696,58 @@ async function loadAdmin() {
     </form>
     <small>Depois disso, o e-mail e o telefone entram pela mesma tela de login e são enviados direto para a gestão.</small>
   </section>` : '';
-  content.innerHTML = `${accessSetup}<div class="admin-management-tabs" role="tablist" aria-label="Gestão"><button type="button" data-admin-tab="trips" class="${adminActiveTab === 'trips' ? 'is-active' : ''}">Viagens e vagas</button><button type="button" data-admin-tab="bookings" class="${adminActiveTab === 'bookings' ? 'is-active' : ''}">Reservas</button></div><div class="admin-tab-panel" data-admin-panel="trips" ${adminActiveTab === 'trips' ? '' : 'hidden'}><div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="refresh-admin">Atualizar</button><button type="button" id="new-trip">+ Adicionar viagem</button></div><p>Pedidos sem vagas configuradas aguardam confirmação. Defina a capacidade real para separar lugares e confirmar pagamentos. Ao pausar uma viagem, novos pedidos ficam bloqueados.</p><div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => { const catalogTrip = TRIPS.find(item => item.id === trip.id); const ended = catalogTrip && isTripPast(catalogTrip); return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}"><div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div><span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}${!trip.demo && trip.available > 0 && trip.available <= 5 ? ` · ⚠️ Últimas ${trip.available} vagas` : ''}</span><label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label><label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label><button type="submit">Salvar vagas</button><button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button></form>`; }).join('')}</div><div id="admin-editor-slot"></div>
-    <section class="manual-section"><h2>Adicionar reserva recebida pelo WhatsApp</h2><p>O passageiro ocupa as vagas imediatamente. Informe o nome de acesso ou e-mail usado no site para vincular à conta dele.</p><form id="manual-booking" class="admin-editor"><label>Viagem<select name="tripId" required>${upcomingTrips().map(trip => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.title)} · ${escapeHtml(trip.date)}</option>`).join('')}</select></label><div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div><div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div><div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div><label>Nome de acesso ou e-mail do cliente (opcional)<input name="identifier" type="text" placeholder="Para aparecer em Minhas reservas" /></label><button type="submit">Salvar passageiro e descontar vagas</button><p id="manual-error" class="form-error" hidden></p></form></section></div><div class="admin-tab-panel" data-admin-panel="bookings" ${adminActiveTab === 'bookings' ? '' : 'hidden'}><section class="admin-reservations-overview"><h2>Reservas por viagem</h2><p>Abra uma viagem para ver clientes, pagamentos e vagas.</p><div class="admin-reservation-trips">${adminReservationsByTripMarkup(trips, bookings)}</div></section>
-    <section class="passengers-admin"><div class="admin-section-heading"><div><h2>Passageiros por viagem</h2><p>Lista agrupada por embarque. Cópia e CSV não incluem o CPF completo.</p></div></div><div class="passengers-admin-list">${passengerGroupsMarkup(bookings)}</div></section>
-    <h2>Últimas reservas</h2><div class="admin-bookings">${bookings.length ? bookings.map(booking => `<article><strong>${escapeHtml(booking.id)} · ${escapeHtml(booking.tripTitle || tripName(booking.tripId))}</strong><p>${escapeHtml(booking.firstName)} ${escapeHtml(booking.lastName)} · CPF final ${escapeHtml(booking.cpfLast4)} · ${escapeHtml(booking.phone)}</p><p>${booking.seats} passageiros · ${booking.source === 'whatsapp' ? 'WhatsApp · ' : ''}${paymentLabel(booking.payment)} · ${escapeHtml(statusLabel(booking.status))}${Number.isInteger(booking.totalCents) ? ` · ${money(booking.totalCents / 100)} · ${escapeHtml(booking.fareLabel)} × ${booking.quantity}` : ''}</p>${booking.status === 'pending' ? `<button class="admin-paid-button" data-action="confirmed" data-id="${booking.id}">Confirmar pagamento e reserva</button>` : ''}${booking.status !== 'cancelled' ? `<button data-action="cancelled" data-id="${booking.id}">Cancelar reserva</button><a class="admin-balance-button" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">Falar com o cliente</a>` : ''}<button class="admin-delete-button" data-delete-booking="${booking.id}">Apagar reserva</button></article>`).join('') : '<p>Nenhuma reserva registrada.</p>'}</div></div>`;
+  const route = decodeURIComponent(location.hash.replace(/^#\/?/, '')).split('/').filter(Boolean);
+  const selectedTripId = route[0] === 'gestao' && route[1] === 'reservas' ? route[2] : '';
+  const selectedTrip = selectedTripId ? trips.find(trip => trip.id === selectedTripId) : null;
+
+  if (selectedTripId) {
+    adminActiveTab = 'bookings';
+    content.innerHTML = selectedTrip
+      ? adminTripReservationsMarkup(selectedTrip, bookings)
+      : `<section class="admin-trip-reservations-page"><a class="admin-reservations-back" href="#/gestao">${icon('arrowLeft', 18)} Voltar para Reservas por viagem</a><p class="empty-state">Essa viagem não foi encontrada ou já saiu da gestão.</p></section>`;
+  } else {
+    content.innerHTML = `${accessSetup}<div class="admin-management-tabs" role="tablist" aria-label="Gestão">
+      <button type="button" data-admin-tab="trips" class="${adminActiveTab === 'trips' ? 'is-active' : ''}">Viagens e vagas</button>
+      <button type="button" data-admin-tab="bookings" class="${adminActiveTab === 'bookings' ? 'is-active' : ''}">Reservas</button>
+    </div>
+    <div class="admin-tab-panel" data-admin-panel="trips" ${adminActiveTab === 'trips' ? '' : 'hidden'}>
+      <div class="admin-toolbar"><h2>Viagens e vagas</h2><button type="button" id="refresh-admin">Atualizar</button></div>
+      <p>Defina a capacidade real de cada viagem e controle se as reservas estão liberadas.</p>
+      <div class="admin-trips">${[...trips].sort((a,b) => compareTripsByStartDate(TRIPS.find(item => item.id === a.id) || {}, TRIPS.find(item => item.id === b.id) || {})).map(trip => {
+        const catalogTrip = TRIPS.find(item => item.id === trip.id);
+        const ended = catalogTrip && isTripPast(catalogTrip);
+        return `<form class="admin-trip ${ended ? 'admin-trip-ended' : ''}" data-id="${trip.id}">
+          <div class="admin-trip-title"><strong>${escapeHtml(tripName(trip.id))}</strong>${ended ? '<span class="admin-ended-badge">Encerrada</span>' : ''}</div>
+          <span>${catalogTrip?.startDate ? `${escapeHtml(catalogTrip.date)} · ` : ''}${trip.reserved} reservas · ${trip.available} restantes ${trip.demo ? '(vagas não configuradas)' : ''}${!trip.demo && trip.available > 0 && trip.available <= 5 ? ` · ⚠️ Últimas ${trip.available} vagas` : ''}</span>
+          <label>Total de vagas<input name="capacity" type="number" min="0" max="500" value="${trip.capacity}" required /></label>
+          <label class="admin-toggle"><input name="enabled" type="checkbox" ${trip.enabled ? 'checked' : ''} /> Liberar reservas</label>
+          <button type="submit">Salvar vagas</button>
+          <button type="button" data-edit="${escapeHtml(trip.id)}">Editar informações e fotos</button>
+        </form>`;
+      }).join('')}</div>
+      <div id="admin-editor-slot"></div>
+      <section class="manual-section">
+        <h2>Adicionar reserva recebida pelo WhatsApp</h2>
+        <p>O passageiro ocupa as vagas imediatamente. Informe o nome de acesso ou e-mail usado no site para vincular à conta dele.</p>
+        <form id="manual-booking" class="admin-editor">
+          <label>Viagem<select name="tripId" required>${upcomingTrips().map(trip => `<option value="${escapeHtml(trip.id)}">${escapeHtml(trip.title)} · ${escapeHtml(trip.date)}</option>`).join('')}</select></label>
+          <div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div>
+          <div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div>
+          <div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div>
+          <label>Nome de acesso ou e-mail do cliente (opcional)<input name="identifier" type="text" placeholder="Para aparecer em Minhas reservas" /></label>
+          <button type="submit">Salvar passageiro e descontar vagas</button>
+          <p id="manual-error" class="form-error" hidden></p>
+        </form>
+      </section>
+    </div>
+    <div class="admin-tab-panel" data-admin-panel="bookings" ${adminActiveTab === 'bookings' ? '' : 'hidden'}>
+      <section class="admin-reservations-overview">
+        <h2>Reservas por viagem</h2>
+        <p>Escolha uma viagem para abrir uma tela separada apenas com os clientes daquela viagem.</p>
+        <div class="admin-reservation-trips">${adminReservationsByTripMarkup(trips, bookings)}</div>
+      </section>
+    </div>`;
+  }
   const adminAccessForm = content.querySelector('#admin-access-form');
   adminAccessForm?.addEventListener('submit', async event => {
     event.preventDefault();
@@ -1741,32 +1789,9 @@ async function loadAdmin() {
     content.querySelectorAll('[data-admin-tab]').forEach(item => item.classList.toggle('is-active', item === button));
     content.querySelectorAll('[data-admin-panel]').forEach(panel => { panel.hidden = panel.dataset.adminPanel !== adminActiveTab; });
   }));
-  content.querySelectorAll('[data-admin-trip-open]').forEach(button => button.addEventListener('click', () => {
-    adminOpenTrip = button.dataset.adminTripOpen;
-    content.querySelectorAll('[data-admin-trip-open]').forEach(item => {
-      const open = item.dataset.adminTripOpen === adminOpenTrip;
-      item.setAttribute('aria-expanded', String(open));
-      item.closest('.admin-reservation-trip')?.classList.toggle('is-open', open);
-    });
-    content.querySelectorAll('[data-admin-trip-body]').forEach(body => { body.hidden = body.dataset.adminTripBody !== adminOpenTrip; });
-  }));
-  content.querySelectorAll('[data-copy-passengers]').forEach(button => button.addEventListener('click', async () => {
-    const csv = passengerCsv(button.dataset.copyPassengers, bookings);
-    try {
-      await navigator.clipboard.writeText(csv);
-      showToast('Lista de passageiros copiada.');
-    } catch {
-      showToast('Não foi possível copiar a lista.');
-    }
-  }));
-  content.querySelectorAll('[data-download-passengers]').forEach(button => button.addEventListener('click', () => {
-    const csv = passengerCsv(button.dataset.downloadPassengers, bookings);
-    downloadTextFile(`passageiros-${button.dataset.fileName || 'viagem'}.csv`, csv);
-  }));
-  content.querySelector('#refresh-admin').onclick = async event => { event.target.disabled = true; try { await loadAdmin(); } catch { showToast('Não foi possível atualizar. Tente novamente.'); event.target.disabled = false; } };
-  content.querySelector('#new-trip').onclick = () => openTripEditor();
+  content.querySelector('#refresh-admin')?.addEventListener('click', async event => { event.target.disabled = true; try { await loadAdmin(); } catch { showToast('Não foi possível atualizar. Tente novamente.'); event.target.disabled = false; } });
   content.querySelectorAll('[data-edit]').forEach(button => button.onclick = () => openTripEditor(TRIPS.find(trip => trip.id === button.dataset.edit)));
-  content.querySelector('#manual-booking').addEventListener('submit', async event => {
+  content.querySelector('#manual-booking')?.addEventListener('submit', async event => {
     event.preventDefault(); const form = event.target, d = new FormData(form), button = form.querySelector('[type="submit"]'); button.disabled = true;
     try {
       const result = await adminManualBooking(Object.fromEntries(d));
