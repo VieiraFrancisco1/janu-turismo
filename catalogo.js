@@ -106,7 +106,7 @@ export const PASSEIOS_SEED = [
   },
   {
     id: 'arajara-park',
-    seedRevision: 20261003,
+    seedRevision: 2026100301,
     publicVacancyStatus: 'last-spots',
     slug: 'arajara-park-mes-das-criancas-2026',
     titulo: 'Arajara Park',
@@ -135,7 +135,11 @@ export const PASSEIOS_SEED = [
       pix: { maxParcelas: 1, observacao: '[CONFIRMAR] Condições de parcelamento no Pix.' },
       cartao: { maxParcelas: null, acrescimoPercentual: null, observacao: '[CONFIRMAR] Condições do cartão.' },
     },
-    imagens: ['./assets/logo-janu.webp'],
+    imagens: [
+      './assets/arajara-park-1.webp',
+      './assets/arajara-park-2.webp',
+      './assets/arajara-park-3.webp',
+    ],
     publicado: true,
   },
   {
@@ -235,7 +239,7 @@ export const PASSEIOS_SEED = [
   },
   {
     id: 'buq-celebration',
-    seedRevision: 20261003,
+    seedRevision: 2026100301,
     publicVacancyStatus: 'last-spots',
     slug: 'buq-celebration-novembro-2026',
     titulo: 'BUQ Celebration',
@@ -262,7 +266,10 @@ export const PASSEIOS_SEED = [
     pagamento: {
       pix: { maxParcelas: 1, observacao: 'Condições confirmadas pela Janu.' },
     },
-    imagens: ['./assets/logo-janu.webp'],
+    imagens: [
+      './assets/buq-celebration-1.webp',
+      './assets/buq-celebration-2.webp',
+    ],
   },
   {
     id: 'lagoa-encantada-alchymist',
