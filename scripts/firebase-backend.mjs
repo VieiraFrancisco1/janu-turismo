@@ -45,7 +45,7 @@ const { PASSEIOS_SEED, adaptarPasseioParaApp } = await import('../catalogo.js');
 const { prepareCatalog, bookingClosesAt } = await import('../booking-model.js');
 initializeApp({ credential: cert(credentials), projectId: project });
 const db = getFirestore();
-let created = 0, migrated = 0;
+let created = 0, migrated = 0, photosUpdated = 0;
 for (const seed of PASSEIOS_SEED.map(adaptarPasseioParaApp)) {
   const ref = db.collection('trip_catalog').doc(seed.id);
   await db.runTransaction(async tx => {
@@ -66,10 +66,16 @@ for (const seed of PASSEIOS_SEED.map(adaptarPasseioParaApp)) {
       } else {
         // Fora de uma revisão oficial, preserva preços, fotos e textos editados pela agência.
         const prepared = prepareCatalog(existing);
-        tx.update(ref, { fareOptions: prepared.fareOptions, bookingClosesAt: Timestamp.fromDate(bookingClosesAt(existing)) });
+        const updates = { fareOptions: prepared.fareOptions, bookingClosesAt: Timestamp.fromDate(bookingClosesAt(existing)) };
+        if (Number(seed.photoRevision || 0) > Number(existing.photoRevision || 0)) {
+          // Uma correção de fotos não deve substituir preços, datas ou textos da viagem.
+          Object.assign(updates, { image: seed.image, imageAlt: seed.imageAlt, images: seed.images, imagens: seed.imagens, photoRevision: seed.photoRevision });
+          photosUpdated++;
+        }
+        tx.update(ref, updates);
       }
       migrated++;
     }
   });
 }
-console.log(`Catálogo sincronizado: ${created} viagens iniciais, ${migrated} existentes conferidas; revisões oficiais aplicadas uma única vez. Capacidade real não alterada.`);
+console.log(`Catálogo sincronizado: ${created} viagens iniciais, ${migrated} existentes conferidas, ${photosUpdated} galerias corrigidas; revisões oficiais aplicadas uma única vez. Capacidade real não alterada.`);

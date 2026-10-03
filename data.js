@@ -342,8 +342,12 @@ export async function adminSaveTrip(trip) {
   const { id, ...fields } = prepareCatalog(trip);
   const ref = doc(db, 'trip_catalog', id);
   const existing = await getDoc(ref);
-  if (existing.exists() && Number(existing.data().seedRevision || 0) > Number(fields.seedRevision || 0)) {
-    fields.seedRevision = Number(existing.data().seedRevision || 0);
+  if (existing.exists()) {
+    for (const revision of ['seedRevision', 'photoRevision']) {
+      if (Number(existing.data()[revision] || 0) > Number(fields[revision] || 0)) {
+        fields[revision] = Number(existing.data()[revision]);
+      }
+    }
   }
   fields.bookingClosesAt = Timestamp.fromDate(bookingClosesAt(trip));
   await setDoc(ref, fields);

@@ -107,6 +107,7 @@ export const PASSEIOS_SEED = [
   {
     id: 'arajara-park',
     seedRevision: 2026100301,
+    photoRevision: 202610031422,
     publicVacancyStatus: 'last-spots',
     slug: 'arajara-park-mes-das-criancas-2026',
     titulo: 'Arajara Park',
@@ -136,9 +137,8 @@ export const PASSEIOS_SEED = [
       cartao: { maxParcelas: null, acrescimoPercentual: null, observacao: '[CONFIRMAR] Condições do cartão.' },
     },
     imagens: [
-      './assets/arajara-park-1.webp',
-      './assets/arajara-park-2.webp',
-      './assets/arajara-park-3.webp',
+      './assets/arajara-park-piscinas-20261003.jpg',
+      './assets/arajara-park-dinossauro-20261003.jpg',
     ],
     publicado: true,
   },
@@ -240,6 +240,7 @@ export const PASSEIOS_SEED = [
   {
     id: 'buq-celebration',
     seedRevision: 2026100301,
+    photoRevision: 202610031422,
     publicVacancyStatus: 'last-spots',
     slug: 'buq-celebration-novembro-2026',
     titulo: 'BUQ Celebration',
@@ -267,8 +268,8 @@ export const PASSEIOS_SEED = [
       pix: { maxParcelas: 1, observacao: 'Condições confirmadas pela Janu.' },
     },
     imagens: [
-      './assets/buq-celebration-1.webp',
-      './assets/buq-celebration-2.webp',
+      './assets/buq-celebration-cartaz-20261003.jpg',
+      './assets/buq-celebration-publico-20261003.jpg',
     ],
   },
   {
