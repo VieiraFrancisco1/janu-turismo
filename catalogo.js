@@ -11,7 +11,7 @@ export const PASSEIOS_SEED = [
   {
     id: 'guaramiranga',
     seedRevision: 20261003,
-    photoRevision: 202610031534,
+    photoRevision: 202610031551,
     slug: 'guaramiranga-natal-de-luz-2026',
     titulo: 'Guaramiranga',
     subtitulo: 'Natal de Luz 2026',
@@ -56,12 +56,15 @@ export const PASSEIOS_SEED = [
         observacao: 'Máximo divulgado: individual em até 3x e casal em até 5x. A quantidade de parcelas diminui conforme a data do passeio se aproxima.',
       },
     },
-    imagens: ['./assets/guaramiranga-centro-20261003.jpg'],
+    imagens: [
+      './assets/guaramiranga.webp',
+      './assets/guaramiranga-centro-20261003.jpg',
+    ],
   },
   {
     id: 'sitio-do-bosco',
     seedRevision: 20261003,
-    photoRevision: 202610031534,
+    photoRevision: 202610031551,
     publicVacancyStatus: 'last-spots',
     slug: 'sitio-do-bosco-ubajara-2026',
     titulo: 'Sítio do Bosco & Ubajara',
@@ -105,6 +108,7 @@ export const PASSEIOS_SEED = [
       },
     },
     imagens: [
+      './assets/sitio-do-bosco.webp',
       './assets/sitio-do-bosco-restaurante-20261003.jpg',
       './assets/sitio-do-bosco-mirante-20261003.jpg',
     ],
@@ -150,7 +154,7 @@ export const PASSEIOS_SEED = [
   {
     id: 'praia-de-lagoinha',
     seedRevision: 20261003,
-    photoRevision: 202610031534,
+    photoRevision: 202610031551,
     slug: 'praia-de-lagoinha-dezembro-2026',
     titulo: 'Praia de Lagoinha',
     subtitulo: 'Hotel Terraço',
@@ -178,12 +182,15 @@ export const PASSEIOS_SEED = [
       pix: { maxParcelas: 2, observacao: 'Pix em até 2x.' },
       cartao: { maxParcelas: null, acrescimoPercentual: null, observacao: '[CONFIRMAR] Parcelas e percentual de acréscimo do cartão.' },
     },
-    imagens: ['./assets/praia-de-lagoinha-20261003.jpg'],
+    imagens: [
+      './assets/lagoinha.webp',
+      './assets/praia-de-lagoinha-20261003.jpg',
+    ],
   },
   {
     id: 'praia-aguas-belas',
     seedRevision: 20261003,
-    photoRevision: 202610031534,
+    photoRevision: 202610031551,
     slug: 'praia-aguas-belas-outubro-2026',
     titulo: 'Praia de Águas Belas',
     subtitulo: 'Um dia de lazer',
@@ -208,12 +215,15 @@ export const PASSEIOS_SEED = [
     observacoes: 'A publicação divulga R$ 130 e também R$ 160 para embarque em Tauá. Confirme o valor conforme a cidade de saída.',
     embarques: [],
     pagamento: {},
-    imagens: ['./assets/praia-aguas-belas-20261003.jpg'],
+    imagens: [
+      './assets/lagoinha.webp',
+      './assets/praia-aguas-belas-20261003.jpg',
+    ],
   },
   {
     id: 'parque-nacional-ubajara',
     seedRevision: 20261003,
-    photoRevision: 202610031534,
+    photoRevision: 202610031551,
     slug: 'parque-nacional-ubajara-novembro-2026',
     titulo: 'Parque Nacional de Ubajara',
     subtitulo: 'Natureza, aventura e paisagens',
@@ -243,7 +253,10 @@ export const PASSEIOS_SEED = [
       pix: { maxParcelas: 1, observacao: 'Condições confirmadas pela Janu.' },
       cartao: { maxParcelas: null, acrescimoPercentual: null, observacao: 'Condições confirmadas pela Janu.' },
     },
-    imagens: ['./assets/ubajara-bondinho-20261003.jpg'],
+    imagens: [
+      './assets/sitio-do-bosco.webp',
+      './assets/ubajara-bondinho-20261003.jpg',
+    ],
   },
   {
     id: 'buq-celebration',
@@ -343,7 +356,7 @@ export const PASSEIOS_SEED = [
   {
     // Mantido porque já existe no site e continua útil.
     id: 'jericoacoara',
-    photoRevision: 202610031534,
+    photoRevision: 202610031551,
     slug: 'jericoacoara',
     titulo: 'Jericoacoara',
     subtitulo: 'Sol, lagoas e pôr do sol',
@@ -371,7 +384,10 @@ export const PASSEIOS_SEED = [
       pix: { maxParcelas: 1, observacao: '[CONFIRMAR] Condições do Pix.' },
       cartao: { maxParcelas: null, acrescimoPercentual: null, observacao: '[CONFIRMAR] Condições do cartão.' },
     },
-    imagens: ['./assets/jericoacoara-lagoa-20261003.jpg'],
+    imagens: [
+      './assets/jericoacoara.webp',
+      './assets/jericoacoara-lagoa-20261003.jpg',
+    ],
   },
 ];
 
