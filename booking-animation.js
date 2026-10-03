@@ -1,5 +1,5 @@
 const VIDEO = './assets/reservando-janu-20261003.mp4';
-const POSTER = './assets/reservando-janu-20261003.jpg';
+const POSTER = './assets/reservando-janu-inicio-20261003.png';
 
 export function startBookingAnimation() {
   const dialog = document.createElement('dialog');
