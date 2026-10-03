@@ -85,7 +85,11 @@ try {
   await assert.rejects(client.createBooking({ ...input, id: 'JT-0000000003', quantity: 6 }), /10 passageiros/);
   await assert.rejects(client.createBooking({ ...input, id: 'JT-0000000003', cpf: '11111111111' }), /Confira/);
   await assert.rejects(admin.adminSetStatus({ id: saved.id, status: 'confirmed' }), /capacidade real/);
-  await inventory({ capacity: 10, reserved: 0, enabled: true, demo: false });
+  await admin.adminSetCapacity({ tripId: trip.id, capacity: 10, enabled: true, publicVacancyStatus: 'last-spots' });
+  const configuredInventory = (await getDoc(doc(customer, 'trip_inventory', trip.id))).data();
+  assert.equal(configuredInventory.capacity, 10);
+  assert.equal(configuredInventory.publicVacancyStatus, 'last-spots');
+  await assertFails(updateDoc(doc(customer, 'trip_inventory', trip.id), { publicVacancyStatus: 'available' }));
   await admin.adminSetStatus({ id: saved.id, status: 'confirmed' });
   assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 4);
   await admin.adminSetStatus({ id: saved.id, status: 'confirmed' });
@@ -143,6 +147,7 @@ try {
   console.log('PASS: horário Ceará, prazo pela data final, ocultação em cliente/gestão e exclusão segura com liberação única de vagas.');
   console.log('PASS: salvamento, preço validado, privacidade, repetição segura, limite simultâneo e confirmação/cancelamento.');
   console.log('PASS: somente o admin principal provisiona o acesso da Janu e o novo admin recebe permissões de gestão.');
+  console.log('PASS: capacidade interna e aviso público de vagas só podem ser alterados pela gestão.');
 } finally {
   await environment.cleanup();
 }
