@@ -99,6 +99,7 @@ function tripAvailability(id) {
   if (trip.status === 'esgotado') return { key: 'sold-out', text: 'Esgotado', soldOut: true };
 
   if (!inventoryReady || !state || state.demo) {
+    if (trip.publicVacancyStatus === 'last-spots') return { key: 'last-spots', text: 'Últimas vagas', soldOut: false };
     return { key: 'open', text: 'Vagas disponíveis', soldOut: false };
   }
 
@@ -1634,6 +1635,7 @@ function adminTripReservationsMarkup(trip, bookings) {
   const paidCount = activeBookings.filter(booking => booking.status === 'confirmed').length;
   const pendingCount = activeBookings.filter(booking => booking.status === 'pending').length;
   const filled = trip.demo ? activeBookings.reduce((sum, booking) => sum + Number(booking.seats || 0), 0) : trip.reserved;
+  const publicVacancyStatus = trip.demo ? (catalogTrip?.publicVacancyStatus || 'available') : (trip.publicVacancyStatus || 'available');
 
   return `<section class="admin-trip-reservations-page">
     <a class="admin-reservations-back" href="#/gestao">${icon('arrowLeft', 18)} Voltar para Reservas por viagem</a>
@@ -1674,8 +1676,8 @@ function adminTripReservationsMarkup(trip, bookings) {
       </label>
       <label>Aviso no site
         <select name="publicVacancyStatus">
-          <option value="available" ${trip.publicVacancyStatus !== 'last-spots' ? 'selected' : ''}>Vagas disponíveis</option>
-          <option value="last-spots" ${trip.publicVacancyStatus === 'last-spots' ? 'selected' : ''}>Últimas vagas</option>
+          <option value="available" ${publicVacancyStatus !== 'last-spots' ? 'selected' : ''}>Vagas disponíveis</option>
+          <option value="last-spots" ${publicVacancyStatus === 'last-spots' ? 'selected' : ''}>Últimas vagas</option>
         </select>
       </label>
       <button type="submit">Salvar controle de vagas</button>
