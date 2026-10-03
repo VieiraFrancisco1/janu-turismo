@@ -57,11 +57,19 @@ for (const seed of PASSEIOS_SEED.map(adaptarPasseioParaApp)) {
       created++;
     } else {
       const existing = snapshot.data();
-      // Atualiza apenas os campos de validação. Não troca preços, fotos ou textos da agência.
-      const prepared = prepareCatalog(existing);
-      tx.update(ref, { fareOptions: prepared.fareOptions, bookingClosesAt: Timestamp.fromDate(bookingClosesAt(existing)) });
+      const seedRevision = Number(seed.seedRevision || 0);
+      const existingRevision = Number(existing.seedRevision || 0);
+      if (seedRevision > existingRevision) {
+        const { id, ...fields } = prepareCatalog(seed);
+        const clean = JSON.parse(JSON.stringify(fields));
+        tx.set(ref, { ...clean, bookingClosesAt: Timestamp.fromDate(bookingClosesAt(seed)) });
+      } else {
+        // Fora de uma revisão oficial, preserva preços, fotos e textos editados pela agência.
+        const prepared = prepareCatalog(existing);
+        tx.update(ref, { fareOptions: prepared.fareOptions, bookingClosesAt: Timestamp.fromDate(bookingClosesAt(existing)) });
+      }
       migrated++;
     }
   });
 }
-console.log(`Catálogo sincronizado: ${created} viagens iniciais, ${migrated} existentes preservadas. Capacidade real não alterada.`);
+console.log(`Catálogo sincronizado: ${created} viagens iniciais, ${migrated} existentes conferidas; revisões oficiais aplicadas uma única vez. Capacidade real não alterada.`);
