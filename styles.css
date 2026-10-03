@@ -3479,3 +3479,72 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
     flex-basis: 100%;
   }
 }
+
+
+.admin-trip-reservations-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.admin-add-passenger-button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.admin-trip-add-passenger {
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px solid #d8e5f1;
+  border-radius: 13px;
+  background: #f8fbff;
+}
+.admin-trip-add-passenger[hidden] {
+  display: none !important;
+}
+.admin-trip-add-passenger-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.admin-trip-add-passenger-head strong,
+.admin-trip-add-passenger-head small {
+  display: block;
+}
+.admin-trip-add-passenger-head strong {
+  color: #173c66;
+  font-size: 15px;
+}
+.admin-trip-add-passenger-head small {
+  margin-top: 2px;
+  color: #71859a;
+  font-size: 11px;
+}
+.admin-trip-add-passenger-close {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #d7e3ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #5b7189;
+  font-size: 22px;
+  line-height: 1;
+}
+@media (max-width: 520px) {
+  .admin-trip-reservations-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .admin-add-passenger-button {
+    width: 100%;
+  }
+}
