@@ -10,6 +10,7 @@ const embarques = cidades => cidades.map(cidade => ({ cidade, horario: null }));
 export const PASSEIOS_SEED = [
   {
     id: 'guaramiranga',
+    seedRevision: 20261003,
     slug: 'guaramiranga-natal-de-luz-2026',
     titulo: 'Guaramiranga',
     subtitulo: 'Natal de Luz 2026',
@@ -58,6 +59,7 @@ export const PASSEIOS_SEED = [
   },
   {
     id: 'sitio-do-bosco',
+    seedRevision: 20261003,
     slug: 'sitio-do-bosco-ubajara-2026',
     titulo: 'Sítio do Bosco & Ubajara',
     subtitulo: 'Serra da Ibiapaba',
@@ -103,6 +105,7 @@ export const PASSEIOS_SEED = [
   },
   {
     id: 'arajara-park',
+    seedRevision: 20261003,
     slug: 'arajara-park-mes-das-criancas-2026',
     titulo: 'Arajara Park',
     subtitulo: 'Especial Mês das Crianças',
@@ -135,6 +138,7 @@ export const PASSEIOS_SEED = [
   },
   {
     id: 'praia-de-lagoinha',
+    seedRevision: 20261003,
     slug: 'praia-de-lagoinha-dezembro-2026',
     titulo: 'Praia de Lagoinha',
     subtitulo: 'Hotel Terraço',
@@ -166,6 +170,7 @@ export const PASSEIOS_SEED = [
   },
   {
     id: 'praia-aguas-belas',
+    seedRevision: 20261003,
     slug: 'praia-aguas-belas-outubro-2026',
     titulo: 'Praia de Águas Belas',
     subtitulo: 'Um dia de lazer',
@@ -194,6 +199,7 @@ export const PASSEIOS_SEED = [
   },
   {
     id: 'parque-nacional-ubajara',
+    seedRevision: 20261003,
     slug: 'parque-nacional-ubajara-novembro-2026',
     titulo: 'Parque Nacional de Ubajara',
     subtitulo: 'Natureza, aventura e paisagens',
@@ -227,6 +233,7 @@ export const PASSEIOS_SEED = [
   },
   {
     id: 'buq-celebration',
+    seedRevision: 20261003,
     slug: 'buq-celebration-novembro-2026',
     titulo: 'BUQ Celebration',
     subtitulo: 'O maior evento Gospel do Norte/Nordeste',
