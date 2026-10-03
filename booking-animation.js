@@ -1,19 +1,63 @@
 const VIDEO = './assets/reservando-janu-20261003.mp4';
-const POSTER = './assets/reservando-janu-inicio-20261003.png';
+let preparedVideo;
+
+const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+function createVideo() {
+  const video = document.createElement('video');
+  video.className = 'booking-animation-preload';
+  video.muted = true;
+  video.defaultMuted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.disablePictureInPicture = true;
+  video.setAttribute('aria-hidden', 'true');
+  video.src = VIDEO;
+  document.body.append(video);
+  video.load();
+  return video;
+}
+
+function discardVideo(video) {
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  video.remove();
+}
+
+export function prepareBookingAnimation() {
+  if (reducedMotion()) return () => {};
+  preparedVideo ||= createVideo();
+  const video = preparedVideo;
+  return () => {
+    if (preparedVideo !== video) return;
+    preparedVideo = null;
+    discardVideo(video);
+  };
+}
 
 export function startBookingAnimation() {
+  if (reducedMotion()) {
+    if (preparedVideo) discardVideo(preparedVideo);
+    preparedVideo = null;
+    return { finished: Promise.resolve(), close() {} };
+  }
   const dialog = document.createElement('dialog');
   dialog.className = 'booking-animation';
   dialog.setAttribute('aria-label', 'Reservando sua viagem');
   dialog.setAttribute('aria-busy', 'true');
-  dialog.innerHTML = `<video src="${VIDEO}" poster="${POSTER}" muted playsinline preload="auto" disablepictureinpicture aria-hidden="true"></video><p class="sr-only" role="status">Salvando sua reserva…</p>`;
-  const video = dialog.querySelector('video');
-  video.muted = true;
+  dialog.innerHTML = '<p class="sr-only" role="status">Salvando sua reserva…</p>';
+  const video = preparedVideo || createVideo();
+  preparedVideo = null;
+  video.classList.remove('booking-animation-preload');
+  dialog.prepend(video);
   let closed = false;
+  let playbackFinished = false;
   let fallbackTimer;
   let resolvePlayback;
   const finished = new Promise(resolve => { resolvePlayback = resolve; });
   const finishPlayback = () => {
+    playbackFinished = true;
     clearTimeout(fallbackTimer);
     resolvePlayback();
   };
@@ -22,26 +66,39 @@ export function startBookingAnimation() {
     closed = true;
     finishPlayback();
     window.removeEventListener('hashchange', close);
-    video.pause();
     if (dialog.open) dialog.close();
+    discardVideo(video);
     dialog.remove();
     document.body.classList.remove('booking-animation-open');
   };
   dialog.addEventListener('cancel', event => event.preventDefault());
   dialog.addEventListener('close', close, { once: true });
+  const showPlayback = () => {
+    if (closed || playbackFinished || dialog.open || video.readyState < 2 || video.paused) return;
+    try {
+      // A tela só abre quando já existe um quadro do vídeo e a reprodução começou.
+      dialog.showModal();
+      document.body.classList.add('booking-animation-open');
+      clearTimeout(fallbackTimer);
+      const durationMs = Number.isFinite(video.duration) ? video.duration * 1000 : 4000;
+      fallbackTimer = setTimeout(close, Math.max(6000, durationMs + 2000));
+    } catch {
+      close();
+    }
+  };
+  video.addEventListener('playing', showPlayback);
   video.addEventListener('ended', finishPlayback, { once: true });
-  video.addEventListener('error', finishPlayback, { once: true });
+  video.addEventListener('error', close, { once: true });
   document.body.append(dialog);
   window.addEventListener('hashchange', close, { once: true });
   try {
-    dialog.showModal();
-    document.body.classList.add('booking-animation-open');
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      finishPlayback();
+    if (reducedMotion() || video.error) {
+      close();
     } else {
-      // O salvamento segue em paralelo; uma falha no vídeo não segura a reserva.
-      fallbackTimer = setTimeout(finishPlayback, 6000);
-      video.play()?.catch(finishPlayback);
+      // Durante o carregamento, mantém o formulário visível e salva em paralelo.
+      fallbackTimer = setTimeout(close, 4000);
+      if (video.currentTime !== 0) video.currentTime = 0;
+      video.play()?.then(showPlayback, close);
     }
   } catch {
     close();

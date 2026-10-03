@@ -1,7 +1,7 @@
 import { cearaDate, tripDeadline, reservationDeadline, watchDeadlines } from './reservation-lifecycle.js';
 import { bookingId } from './booking-model.js';
 import { photoCarouselMarkup, explorePhotosMarkup, initPhotoGallery } from './photo-gallery.js';
-import { startBookingAnimation } from './booking-animation.js';
+import { prepareBookingAnimation, startBookingAnimation } from './booking-animation.js';
 import { initScrollGuide } from './scroll-guide.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
 import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, watchTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking, adminCreatePhoneAccount, adminSetCurrentPassword, isProvisionedAdminAccount, adminAccess } from './data.js';
@@ -28,6 +28,7 @@ TRIPS = starterTrips.map(normalizeTrip);
 let filter = 'Todos';
 let query = '';
 let disposeDetailPhotos = () => {};
+let disposeBookingAnimation = () => {};
 let disposeBookings = () => {};
 let disposeAdminExpiry = () => {};
 let disposeTripExpiry = () => {};
@@ -943,6 +944,7 @@ function renderDetail(id) {
   disposeDetailPhotos = initPhotoGallery(app.querySelector('.detail-hero'), galleryImages, trip.title);
 
   const form = app.querySelector('#trip-booking-config');
+  disposeBookingAnimation = prepareBookingAnimation();
   const fareSelect = form.querySelector('[name="fare"]');
   const quantityInput = form.querySelector('[name="quantity"]');
   const totalInside = form.querySelector('[data-config-total]');
@@ -1985,6 +1987,8 @@ function render() {
   document.querySelectorAll('.booking-auth-dialog').forEach(dialog => { dialog.close(); dialog.remove(); });
   disposeDetailPhotos();
   disposeDetailPhotos = () => {};
+  disposeBookingAnimation();
+  disposeBookingAnimation = () => {};
   const route = decodeURIComponent(location.hash.replace(/^#\/?/, '')).split('/').filter(Boolean);
   if (route[0] === 'viagem' && route[1]) renderDetail(route[1]);
   else if (route[0] === 'reserva' && route[1]) renderConfirmation(route[1]);
