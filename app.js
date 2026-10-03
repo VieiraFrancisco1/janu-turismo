@@ -1621,10 +1621,26 @@ function adminTripReservationsMarkup(trip, bookings) {
   return `<section class="admin-trip-reservations-page">
     <a class="admin-reservations-back" href="#/gestao">${icon('arrowLeft', 18)} Voltar para Reservas por viagem</a>
     <div class="admin-trip-reservations-heading">
-      <span class="section-kicker">RESERVAS</span>
-      <h2>${escapeHtml(tripName(trip.id))}</h2>
-      <p>${escapeHtml(catalogTrip?.date || 'Data a confirmar')}</p>
+      <div>
+        <span class="section-kicker">RESERVAS</span>
+        <h2>${escapeHtml(tripName(trip.id))}</h2>
+        <p>${escapeHtml(catalogTrip?.date || 'Data a confirmar')}</p>
+      </div>
+      <button class="admin-add-passenger-button" type="button" data-add-passenger>+ Adicionar passageiro</button>
     </div>
+    <form id="trip-manual-booking" class="admin-editor admin-trip-add-passenger" hidden>
+      <input name="tripId" type="hidden" value="${escapeHtml(trip.id)}" />
+      <div class="admin-trip-add-passenger-head">
+        <div><strong>Adicionar passageiro</strong><small>Reserva manual para esta viagem</small></div>
+        <button type="button" class="admin-trip-add-passenger-close" data-close-passenger aria-label="Fechar">×</button>
+      </div>
+      <div class="form-grid"><label>Nome<input name="firstName" required /></label><label>Sobrenome<input name="lastName" required /></label></div>
+      <div class="form-grid"><label>CPF<input name="cpf" inputmode="numeric" maxlength="14" required /></label><label>Telefone<input name="phone" type="tel" required /></label></div>
+      <div class="form-grid"><label>Quantidade de vagas<input name="seats" type="number" min="1" max="10" value="1" required /></label><label>Embarque<input name="boarding" placeholder="Cidade / local" maxlength="80" /></label></div>
+      <label>Nome de acesso ou e-mail do cliente (opcional)<input name="identifier" type="text" placeholder="Para aparecer em Minhas reservas" /></label>
+      <button type="submit">Salvar passageiro</button>
+      <p class="form-error" hidden></p>
+    </form>
     <div class="admin-seat-metrics">
       <div><span>Total de vagas</span><strong>${trip.demo ? '—' : trip.capacity}</strong></div>
       <div><span>Preenchidas</span><strong>${filled}</strong></div>
@@ -1748,6 +1764,34 @@ async function loadAdmin() {
       </section>
     </div>`;
   }
+  const addPassengerButton = content.querySelector('[data-add-passenger]');
+  const tripPassengerForm = content.querySelector('#trip-manual-booking');
+  addPassengerButton?.addEventListener('click', () => {
+    if (!tripPassengerForm) return;
+    tripPassengerForm.hidden = !tripPassengerForm.hidden;
+    if (!tripPassengerForm.hidden) tripPassengerForm.elements.firstName?.focus();
+  });
+  tripPassengerForm?.querySelector('[data-close-passenger]')?.addEventListener('click', () => {
+    tripPassengerForm.hidden = true;
+  });
+  tripPassengerForm?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('[type="submit"]');
+    const warning = form.querySelector('.form-error');
+    button.disabled = true;
+    warning.hidden = true;
+    try {
+      const result = await adminManualBooking(Object.fromEntries(new FormData(form)));
+      showToast(result.linked ? 'Passageiro adicionado e vinculado à conta do cliente.' : 'Passageiro adicionado à viagem.');
+      await loadAdmin();
+    } catch (error) {
+      warning.textContent = error.message;
+      warning.hidden = false;
+      button.disabled = false;
+    }
+  });
+
   const adminAccessForm = content.querySelector('#admin-access-form');
   adminAccessForm?.addEventListener('submit', async event => {
     event.preventDefault();
