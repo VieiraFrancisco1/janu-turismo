@@ -60,6 +60,7 @@ export const PASSEIOS_SEED = [
   {
     id: 'sitio-do-bosco',
     seedRevision: 20261003,
+    publicVacancyStatus: 'last-spots',
     slug: 'sitio-do-bosco-ubajara-2026',
     titulo: 'Sítio do Bosco & Ubajara',
     subtitulo: 'Serra da Ibiapaba',
@@ -106,6 +107,7 @@ export const PASSEIOS_SEED = [
   {
     id: 'arajara-park',
     seedRevision: 20261003,
+    publicVacancyStatus: 'last-spots',
     slug: 'arajara-park-mes-das-criancas-2026',
     titulo: 'Arajara Park',
     subtitulo: 'Especial Mês das Crianças',
@@ -234,6 +236,7 @@ export const PASSEIOS_SEED = [
   {
     id: 'buq-celebration',
     seedRevision: 20261003,
+    publicVacancyStatus: 'last-spots',
     slug: 'buq-celebration-novembro-2026',
     titulo: 'BUQ Celebration',
     subtitulo: 'O maior evento Gospel do Norte/Nordeste',
