@@ -3357,3 +3357,125 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
     grid-column: 1;
   }
 }
+
+
+/* Reservas administrativas em tela separada */
+.admin-reservation-trip-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 78px;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 5px 18px rgba(11, 54, 96, .05);
+}
+.admin-reservation-trip-link:hover {
+  border-color: #b9d1e6;
+  transform: translateY(-1px);
+}
+.admin-reservation-trip-main {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+.admin-reservation-trip-main small {
+  color: #75899d;
+  font-size: 11px;
+  font-weight: 700;
+}
+.admin-reservation-trip-main strong {
+  overflow: hidden;
+  color: #173c66;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-reservation-trip-main > span {
+  color: #63788e;
+  font-size: 11px;
+}
+.admin-reservation-trip-status {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.admin-reservation-trip-status small {
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+}
+.admin-reservation-trip-status svg {
+  color: var(--blue);
+}
+.admin-trip-reservations-page {
+  margin-top: 18px;
+}
+.admin-reservations-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.admin-trip-reservations-heading {
+  margin-bottom: 14px;
+}
+.admin-trip-reservations-heading h2 {
+  margin: 4px 0 2px;
+  color: #173c66;
+  font-size: 24px;
+}
+.admin-trip-reservations-heading p {
+  margin: 0;
+  color: #71859a;
+  font-size: 12px;
+}
+.admin-trip-clients {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.admin-client-actions button:disabled {
+  opacity: .48;
+  cursor: default;
+}
+.admin-client-actions .admin-balance-button {
+  color: #08713f;
+  border-color: #b7dfca;
+  background: #f3fff8;
+}
+@media (max-width: 620px) {
+  .admin-reservation-trip-link {
+    align-items: flex-start;
+    padding: 13px;
+  }
+  .admin-reservation-trip-status {
+    grid-template-columns: 1fr;
+    justify-items: end;
+  }
+  .admin-reservation-trip-status svg {
+    display: none;
+  }
+  .admin-client-actions > * {
+    flex: 1 1 calc(50% - 4px);
+  }
+}
+@media (max-width: 390px) {
+  .admin-reservation-trip-status small {
+    font-size: 9px;
+  }
+  .admin-client-actions > * {
+    flex-basis: 100%;
+  }
+}
