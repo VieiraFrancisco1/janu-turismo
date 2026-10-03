@@ -128,6 +128,25 @@ export async function getTrips(ids = []) {
   return ids.map(id => ({ ...(tripCache.get(id)?.value || { id, capacity: 0, reserved: 0, enabled: false, demo: true, available: 0 }) }));
 }
 
+export function watchTrips(ids = [], onChange, onError = () => {}) {
+  requireSetup();
+  const wanted = [...new Set(ids)].filter(validTripId);
+  if (!wanted.length) {
+    onChange([]);
+    return () => {};
+  }
+  return onSnapshot(collection(db, 'trip_inventory'), snapshot => {
+    const byId = new Map(snapshot.docs.map(item => [item.id, item.data()]));
+    const trips = wanted.map(id => {
+      const data = byId.get(id) || { capacity: 0, reserved: 0, enabled: false, demo: true };
+      const value = { id, ...data, available: Math.max(0, Number(data.capacity || 0) - Number(data.reserved || 0)) };
+      tripCache.set(id, { value, expiresAt: Date.now() + CACHE_TTL_MS });
+      return { ...value };
+    });
+    onChange(trips);
+  }, () => onError(new Error('Não conseguimos atualizar as vagas agora.')));
+}
+
 export async function createBooking(input) {
   const user = requireUser();
   const cpf = digits(input.cpf), phone = digits(input.phone);
@@ -245,6 +264,18 @@ export async function isProvisionedAdminAccount() {
   const user = requireUser();
   const snap = await getDoc(doc(db, 'admin_users', user.uid));
   return snap.exists();
+}
+
+export async function adminAccess() {
+  const user = requireUser();
+  const primary = String(user.email || '').toLowerCase() === '0vieira.francisco0@gmail.com';
+  const snap = await getDoc(doc(db, 'admin_users', user.uid));
+  const profile = snap.exists() ? snap.data() : null;
+  return {
+    primary,
+    owner: Boolean(profile?.phone),
+    profile,
+  };
 }
 
 export async function adminCreatePhoneAccount({ phone, password }) {
