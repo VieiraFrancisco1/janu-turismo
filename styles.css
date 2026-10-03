@@ -3548,3 +3548,29 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
     width: 100%;
   }
 }
+
+
+/* Últimas vagas automáticas */
+.trip-status.status-last-spots {
+  border: 1px solid #b42318;
+  background: #d92d20;
+  color: #fff;
+  box-shadow: 0 3px 9px rgba(180, 35, 24, .18);
+}
+.hero-vacancies.status-last-spots {
+  border-color: rgba(255,255,255,.76);
+  background: rgba(190, 24, 24, .94);
+  color: #fff !important;
+  box-shadow: 0 3px 10px rgba(120, 0, 0, .26);
+}
+.admin-owner-reservations {
+  margin-top: 22px;
+}
+.admin-owner-reservations > h2 {
+  margin: 5px 0 4px;
+}
+.admin-owner-reservations > p {
+  margin: 0 0 15px;
+  color: var(--muted);
+  font-size: 13px;
+}
