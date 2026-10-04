@@ -1,4 +1,4 @@
-const VIDEO = './assets/reservando-janu-20261003.mp4';
+const VIDEO = './assets/reservando-janu-novo-20261004.mp4';
 let preparedVideo;
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
