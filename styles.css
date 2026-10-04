@@ -3698,11 +3698,12 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
 }
 
 /* Controle da Janu: painel compacto com ações lado a lado. */
-.owner-control { color: #123555; font-size: 16px; line-height: 1.45; }
-.owner-control h1 { font-size: clamp(24px, 5vw, 28px); line-height: 1.2; }
-.owner-control h2 { font-size: 21px; line-height: 1.3; }
-.owner-control h3 { font-size: 20px; line-height: 1.3; }
-.owner-control > p, .owner-control #admin-content > p { color: #405a71; font-size: 16px; }
+.owner-control { padding-top: 10px; padding-inline: 12px; color: #123555; font-size: 15px; line-height: 1.4; }
+.owner-control h1 { margin: 6px 0; font-size: clamp(22px, 5vw, 26px); line-height: 1.2; }
+.owner-control h2 { font-size: 20px; line-height: 1.3; }
+.owner-control h3 { font-size: 19px; line-height: 1.3; }
+.owner-control > p, .owner-control #admin-content > p { margin: 6px 0 10px; color: #405a71; font-size: 14px; }
+.owner-control.owner-trip-detail > h1 { margin: 2px 0 4px; font-size: 20px; }
 .owner-control button, .owner-control input, .owner-control select { font: inherit; }
 .owner-control button, .owner-control summary, .owner-control a { touch-action: manipulation; }
 .owner-control button:disabled { opacity: .6; cursor: wait; }
@@ -3727,20 +3728,20 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
 .admin-trip-open svg { color: #fff; }
 .owner-control .admin-trip-open { font-size: 15px; }
 .owner-control .admin-reservation-trip-status .admin-trip-open svg { display: block; color: #fff; }
-.owner-control .admin-trip-reservations-page { margin-top: 16px; }
-.owner-control .admin-reservations-back { gap: 7px; min-height: 44px; margin-bottom: 14px; padding: 8px 10px; border: 1.5px solid #9ab8d6; border-radius: 9px; background: #f2f7fd; color: #124f8e; font-size: 15px; }
-.owner-control .admin-trip-reservations-heading { margin: 6px 0 14px; align-items: center; }
-.owner-control .admin-trip-reservations-heading h2 { font-size: 24px; }
-.owner-control .admin-trip-reservations-heading p { color: #405a71; font-size: 15px; }
-.owner-control .admin-add-passenger-button { min-height: 44px; padding: 9px 12px; border: 1.5px solid #124f8e; border-radius: 9px; background: #135ba0; font-size: 15px; }
-.owner-control .admin-seat-metrics { gap: 8px; margin: 14px 0; }
-.owner-control .admin-seat-metrics > div { padding: 12px 8px; border: 1.5px solid #b6cde3; border-radius: 11px; background: #f5f9ff; }
+.owner-control .admin-trip-reservations-page { margin-top: 8px; }
+.owner-control .admin-reservations-back { gap: 6px; min-height: 36px; margin-bottom: 6px; padding: 6px 8px; border: 1px solid #9ab8d6; border-radius: 8px; background: #f2f7fd; color: #124f8e; font-size: 14px; }
+.owner-control .admin-trip-reservations-heading { margin: 0 0 10px; align-items: center; gap: 8px; }
+.owner-control .admin-trip-reservations-heading h2 { font-size: 22px; }
+.owner-control .admin-trip-reservations-heading p { color: #405a71; font-size: 14px; }
+.owner-control .admin-add-passenger-button { min-height: 40px; padding: 8px 10px; border: 1.5px solid #124f8e; border-radius: 9px; background: #135ba0; font-size: 14px; }
+.owner-control .admin-seat-metrics { gap: 6px; margin: 10px 0; }
+.owner-control .admin-seat-metrics > div { padding: 6px 5px; border: 1px solid #b6cde3; border-radius: 8px; background: #f5f9ff; }
 .owner-control .admin-seat-metrics > div:last-child { background: #eaf8f1; border-color: #82b99b; }
-.owner-control .admin-seat-metrics span { color: #36536f; font-size: 14px; font-weight: 700; }
-.owner-control .admin-seat-metrics strong { margin-top: 4px; color: #123555; font-size: 26px; }
-.admin-view-clients { display: inline-flex; justify-content: center; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 9px 10px; border: 1.5px solid #135ba0; border-radius: 9px; background: #135ba0; color: #fff; font-weight: 800; }
-.admin-vacancy-details { margin: 14px 0 20px; border: 1.5px solid #b9cfe4; border-radius: 11px; background: #f5f9ff; }
+.owner-control .admin-seat-metrics span { min-height: 0; color: #36536f; font-size: 12px; font-weight: 700; line-height: 1.2; }
+.owner-control .admin-seat-metrics strong { margin-top: 2px; color: #123555; font-size: 22px; line-height: 1.1; }
+.admin-vacancy-details { margin: 10px 0 12px; border: 1.5px solid #b9cfe4; border-radius: 11px; background: #f5f9ff; }
 .admin-vacancy-details > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 12px; color: #124f8e; cursor: pointer; font-weight: 800; }
+.owner-control .admin-vacancy-details > summary { min-height: 40px; padding: 8px 10px; font-size: 14px; }
 .admin-vacancy-details > summary::after { content: ''; width: 8px; height: 8px; margin-left: auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); flex: 0 0 auto; }
 .admin-vacancy-details[open] > summary::after { transform: rotate(225deg); }
 .owner-control .admin-vacancy-control { grid-template-columns: 1fr 1fr; padding: 14px; margin: 0; border: 0; background: transparent; gap: 12px; }
@@ -3752,26 +3753,30 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
 .admin-client-section { scroll-margin-top: 90px; }
 .admin-client-section > h3 { margin-bottom: 6px; }
 .admin-clients-hint { margin-top: 0; color: #405a71; font-size: 15px; }
-.owner-control .admin-payment-summary { gap: 8px; margin: 14px 0; }
-.owner-control .admin-payment-summary span { padding: 6px 10px; border: 1px solid currentColor; font-size: 14px; }
-.admin-client-tools { margin: 14px 0; }
+.owner-control .admin-client-section > h3 { margin: 8px 0 4px; }
+.owner-control .admin-clients-hint { margin-bottom: 8px; font-size: 14px; }
+.owner-control .admin-payment-summary { gap: 6px; margin: 10px 0; }
+.owner-control .admin-payment-summary span { padding: 5px 9px; border: 1px solid currentColor; font-size: 13px; }
+.admin-client-tools { margin: 10px 0; }
 .admin-client-tools > label { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: #123555; font-weight: 800; }
 .admin-client-tools input { flex-basis: 100%; width: 100%; min-height: 44px; padding: 9px 12px; margin-top: 4px; border: 1.5px solid #91acc7; border-radius: 9px; color: #123555; background: #fff; font: inherit; }
-.owner-control .admin-client-tools input { font-size: 16px; }
+.owner-control .admin-client-tools > label { font-size: 14px; }
+.owner-control .admin-client-tools input { min-height: 40px; font-size: 16px; }
 .admin-client-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .admin-client-filters button { min-height: 44px; padding: 8px 6px; border: 1.5px solid #a5bed7; border-radius: 9px; background: #fff; color: #124f8e; font-weight: 800; }
+.owner-control .admin-client-filters button { min-height: 40px; font-size: 14px; }
 .admin-client-filters [aria-pressed="true"] { border-color: #135ba0; background: #135ba0; color: #fff; }
 .admin-search-result { margin-top: 8px; color: #405a71; }
-.owner-control .admin-trip-clients { gap: 14px; }
-.owner-control .admin-reservation-person { padding: 14px; border: 1.5px solid #d4a633; border-left-width: 5px; border-radius: 13px; background: #fffaf0; }
+.owner-control .admin-trip-clients { gap: 10px; }
+.owner-control .admin-reservation-person { padding: 12px; border: 1.5px solid #d4a633; border-left-width: 5px; border-radius: 12px; background: #fffaf0; }
 .owner-control .admin-reservation-person.booking-state-confirmed { border-color: #409365; background: #f1fcf5; }
 .owner-control .admin-reservation-person.booking-state-cancelled { border-color: #c49797; background: #faf4f4; }
 .admin-reservation-person[hidden] { display: none !important; }
 .owner-control .admin-reservation-person-head { gap: 8px; flex-wrap: wrap; }
-.owner-control .admin-reservation-person-head strong { font-size: 20px; line-height: 1.3; }
-.owner-control .admin-reservation-person-head small { font-size: 13px; color: #405a71; margin-top: 3px; }
+.owner-control .admin-reservation-person-head strong { font-size: 19px; line-height: 1.3; }
+.owner-control .admin-reservation-person-head small { font-size: 12px; color: #405a71; margin-top: 3px; }
 .owner-control .admin-payment-badge { min-height: 32px; padding: 6px 10px; border: 1px solid currentColor; font-size: 14px; }
-.owner-control .admin-reservation-person > p { margin-top: 9px; color: #36536f; font-size: 15px; line-height: 1.45; }
+.owner-control .admin-reservation-person > p { margin-top: 7px; color: #36536f; font-size: 14px; line-height: 1.4; }
 .owner-control .admin-client-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
 .owner-control .booking-state-cancelled .admin-client-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .owner-control .admin-client-actions button, .owner-control .admin-client-actions a { min-width: 0; gap: 6px; min-height: 44px; padding: 8px 9px; border: 1.5px solid; border-radius: 9px; font-size: 14px; line-height: 1.3; text-align: center; }
@@ -3806,9 +3811,6 @@ body:has(main.owner-control) #toast { font-size: 16px; line-height: 1.45; }
 }
 @media (max-width: 460px) {
   .owner-overview-summary span { font-size: 13px; }
-  .owner-control .admin-seat-metrics { gap: 6px; }
-  .owner-control .admin-seat-metrics > div { padding: 10px 6px; }
-  .owner-control .admin-seat-metrics span { min-height: 38px; font-size: 13px; }
   .owner-control .admin-vacancy-control { grid-template-columns: 1fr; }
   .owner-control .form-grid { grid-template-columns: 1fr; }
   .owner-control .admin-client-filters button { font-size: 14px; }

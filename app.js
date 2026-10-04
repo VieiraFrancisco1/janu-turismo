@@ -1667,7 +1667,7 @@ function adminTripReservationsMarkup(trip, bookings, backRoute = '#/gestao') {
   const publicVacancyStatus = trip.demo ? (catalogTrip?.publicVacancyStatus || 'available') : (trip.publicVacancyStatus || 'available');
 
   return `<section class="admin-trip-reservations-page">
-    <a class="admin-reservations-back" href="${backRoute}">${icon('arrowLeft', 20)} Voltar para as viagens</a>
+    <a class="admin-reservations-back" href="${backRoute}">${icon('arrowLeft', 18)} Voltar para viagens</a>
     <div class="admin-trip-reservations-heading">
       <div>
         <span class="section-kicker">RESERVAS</span>
@@ -1689,12 +1689,11 @@ function adminTripReservationsMarkup(trip, bookings, backRoute = '#/gestao') {
       <button type="submit">Salvar passageiro</button>
       <p class="form-error" hidden></p>
     </form>
-    <div class="admin-seat-metrics">
+    <div class="admin-seat-metrics" role="group" aria-label="Vagas da viagem">
       <div><span>Total de vagas</span><strong>${trip.demo ? '—' : trip.capacity}</strong></div>
       <div><span>Vagas ocupadas</span><strong>${filled}</strong></div>
       <div><span>Vagas livres</span><strong>${trip.demo ? '—' : trip.available}</strong></div>
     </div>
-    <button type="button" class="admin-view-clients" data-view-clients>${icon('user', 20)} Ver clientes e pagamentos ${icon('arrowRight', 20)}</button>
     <details class="admin-vacancy-details">
     <summary>${icon('ticket', 20)} Alterar vagas da viagem</summary>
     <form class="admin-vacancy-control" data-capacity-control data-id="${escapeHtml(trip.id)}">
@@ -1815,7 +1814,8 @@ async function loadAdmin() {
   const access = await adminAccess().catch(() => ({ primary: isPrimaryAdmin, owner: !isPrimaryAdmin }));
   if (!content.isConnected) return;
   const ownerOnly = access.owner && !access.primary;
-  content.closest('main').classList.toggle('owner-control', ownerOnly);
+  const main = content.closest('main');
+  main.classList.toggle('owner-control', ownerOnly);
   if (ownerOnly) adminActiveTab = 'bookings';
   const accessSetup = (!provisionedAdmin && isPrimaryAdmin) ? `<section class="admin-access-setup">
     <div><span class="section-kicker">ACESSOS ADMINISTRATIVOS</span><h2>Configurar acessos da Janu</h2><p>Defina aqui as credenciais administrativas. As senhas são enviadas diretamente ao Firebase e não ficam salvas no código do site.</p></div>
@@ -1841,6 +1841,7 @@ async function loadAdmin() {
     return;
   }
   const selectedTrip = selectedTripId ? trips.find(trip => trip.id === selectedTripId) : null;
+  main.classList.toggle('owner-trip-detail', ownerOnly && Boolean(selectedTripId));
   if (selectedTripId !== adminClientTrip) {
     adminClientTrip = selectedTripId;
     adminClientQuery = '';
@@ -1905,12 +1906,12 @@ async function loadAdmin() {
       </section>
     </div>`;
   }
+  main.querySelector(':scope > .admin-reservations-back')?.remove();
   if (ownerOnly) {
-    content.closest('main').querySelector(':scope > p').textContent = selectedTrip ? 'Veja os clientes, confirme pagamentos e organize as vagas.' : 'Suas viagens e seus clientes em um só lugar.';
+    const back = content.querySelector('.admin-reservations-back');
+    if (back) main.prepend(back);
+    main.querySelector(':scope > p').textContent = selectedTripId ? 'Clientes, pagamentos e vagas.' : 'Suas viagens e seus clientes em um só lugar.';
   }
-  content.querySelector('[data-view-clients]')?.addEventListener('click', () => {
-    content.querySelector('#admin-client-list')?.scrollIntoView({ behavior: 'instant', block: 'start' });
-  });
   const clientSearch = content.querySelector('[data-client-search]');
   if (clientSearch) {
     const normalizeSearch = value => String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
