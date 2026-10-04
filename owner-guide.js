@@ -39,6 +39,7 @@ export function openOwnerTutorial({ ownerId, renderTrips, renderTrip }) {
   let frame;
   let closed = false;
   let resizeObserver;
+  let positionedAtStart = false;
 
   const welcome = (finished = false) => {
     stage.innerHTML = `<section class="owner-guide-welcome"><span class="section-kicker">${finished ? 'VOCÊ CONCLUIU O TUTORIAL' : 'VAMOS APRENDER JUNTAS'}</span><h1>${finished ? 'Pronto! Você já conhece o painel.' : 'Um passo de cada vez'}</h1><p>${finished ? 'Para rever as explicações, toque em “Como usar o painel” sempre que precisar.' : 'Siga a seta e toque no botão indicado. Vamos praticar com uma reserva de exemplo.'}</p><button type="button" ${finished ? 'data-guide-finish' : 'data-guide-start'}>${finished ? 'Concluir tutorial' : 'Começar tutorial'}</button></section>`;
@@ -86,7 +87,15 @@ export function openOwnerTutorial({ ownerId, renderTrips, renderTrip }) {
     const left = Math.max(14, Math.min(rect.left + rect.width / 2 - hintWidth / 2, viewWidth - hintWidth - 14));
     const hintHeight = hint.getBoundingClientRect().height;
     const below = rect.bottom + hintHeight + 26 <= viewHeight - 12;
-    const top = below ? rect.bottom + 26 : Math.max(78, rect.top - hintHeight - 26);
+    const headerBottom = dialog.querySelector('.owner-guide-top').getBoundingClientRect().bottom;
+    const roomAbove = rect.top - hintHeight - 26 >= headerBottom + 12;
+    if (!below && !roomAbove && !positionedAtStart && rect.top > headerBottom + 30) {
+      positionedAtStart = true;
+      target.scrollIntoView({ behavior: 'instant', block: 'start' });
+      schedule();
+      return;
+    }
+    const top = below ? rect.bottom + 26 : Math.max(headerBottom + 12, rect.top - hintHeight - 26);
     hint.style.left = `${left}px`;
     hint.style.top = `${Math.min(top, Math.max(12, viewHeight - hintHeight - 12))}px`;
     hint.classList.toggle('is-above', !below);
@@ -103,7 +112,8 @@ export function openOwnerTutorial({ ownerId, renderTrips, renderTrip }) {
     hint.querySelector('h2').textContent = step.title;
     hint.querySelector('p').textContent = step.text;
     target.setAttribute('aria-describedby', 'owner-guide-title owner-guide-text');
-    target.scrollIntoView({ behavior: 'instant', block: 'start' });
+    positionedAtStart = target.getBoundingClientRect().height > 120;
+    target.scrollIntoView({ behavior: 'instant', block: positionedAtStart ? 'start' : 'center' });
     target.focus({ preventScroll: true });
     schedule();
   }
