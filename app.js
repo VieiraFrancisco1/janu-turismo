@@ -3,7 +3,6 @@ import { bookingId } from './booking-model.js';
 import { photoCarouselMarkup, explorePhotosMarkup, initPhotoGallery } from './photo-gallery.js';
 import { prepareBookingAnimation, startBookingAnimation } from './booking-animation.js';
 import { initScrollGuide } from './scroll-guide.js';
-import { initOwnerGuide, openOwnerTutorial } from './owner-guide.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
 import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, watchTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking, adminCreatePhoneAccount, adminSetCurrentPassword, isProvisionedAdminAccount, adminAccess } from './data.js';
 
@@ -32,7 +31,6 @@ let disposeDetailPhotos = () => {};
 let disposeBookingAnimation = () => {};
 let disposeBookings = () => {};
 let disposeAdminExpiry = () => {};
-let disposeOwnerGuide = () => {};
 let disposeTripExpiry = () => {};
 let disposeInventory = () => {};
 let adminActiveTab = 'trips';
@@ -1644,7 +1642,7 @@ function adminReservationsByTripMarkup(trips, bookings, detailRoute = '#/gestao/
     const tripBookings = bookings.filter(booking => booking.tripId === trip.id && booking.status !== 'cancelled');
     const paidCount = tripBookings.filter(booking => booking.status === 'confirmed').length;
     const pendingCount = tripBookings.filter(booking => booking.status === 'pending').length;
-    return `<a class="admin-reservation-trip-link" data-guide="trip" href="${detailRoute}/${encodeURIComponent(trip.id)}">
+    return `<a class="admin-reservation-trip-link" href="${detailRoute}/${encodeURIComponent(trip.id)}">
       <span class="admin-reservation-trip-main">
         <small>${escapeHtml(catalogTrip?.date || 'Data a confirmar')}</small>
         <strong>${escapeHtml(tripName(trip.id))}</strong>
@@ -1669,7 +1667,7 @@ function adminTripReservationsMarkup(trip, bookings, backRoute = '#/gestao') {
   const publicVacancyStatus = trip.demo ? (catalogTrip?.publicVacancyStatus || 'available') : (trip.publicVacancyStatus || 'available');
 
   return `<section class="admin-trip-reservations-page">
-    <a class="admin-reservations-back" data-guide="back" href="${backRoute}">${icon('arrowLeft', 22)} Voltar para as viagens</a>
+    <a class="admin-reservations-back" href="${backRoute}">${icon('arrowLeft', 20)} Voltar para as viagens</a>
     <div class="admin-trip-reservations-heading">
       <div>
         <span class="section-kicker">RESERVAS</span>
@@ -1696,9 +1694,9 @@ function adminTripReservationsMarkup(trip, bookings, backRoute = '#/gestao') {
       <div><span>Vagas ocupadas</span><strong>${filled}</strong></div>
       <div><span>Vagas livres</span><strong>${trip.demo ? '—' : trip.available}</strong></div>
     </div>
-    <button type="button" class="admin-view-clients" data-guide="clients">${icon('user', 23)} Ver clientes e pagamentos ${icon('arrowRight', 22)}</button>
+    <button type="button" class="admin-view-clients" data-view-clients>${icon('user', 20)} Ver clientes e pagamentos ${icon('arrowRight', 20)}</button>
     <details class="admin-vacancy-details">
-    <summary data-guide="vacancies">${icon('ticket', 23)} Alterar vagas da viagem</summary>
+    <summary>${icon('ticket', 20)} Alterar vagas da viagem</summary>
     <form class="admin-vacancy-control" data-capacity-control data-id="${escapeHtml(trip.id)}">
       <div>
         <strong>Vagas da viagem</strong>
@@ -1713,13 +1711,13 @@ function adminTripReservationsMarkup(trip, bookings, backRoute = '#/gestao') {
           <option value="last-spots" ${publicVacancyStatus === 'last-spots' ? 'selected' : ''}>Últimas vagas</option>
         </select>
       </label>
-      <button type="submit" data-guide="save-vacancies">Salvar vagas</button>
+      <button type="submit">Salvar vagas</button>
       <p class="form-error" hidden></p>
     </form>
     </details>
     <section id="admin-client-list" class="admin-client-section">
     <h3>Clientes e pagamentos</h3>
-    <p class="admin-clients-hint">Recebeu o pagamento? Toque em “Marcar como pago” na reserva do cliente.</p>
+    <p class="admin-clients-hint">Recebeu o pagamento? Toque em “Marcar pago” na reserva do cliente.</p>
     <div class="admin-payment-summary">
       <span class="admin-payment-summary-paid">${paidCount} ${paidCount === 1 ? 'pago' : 'pagos'}</span>
       <span class="admin-payment-summary-pending">${pendingCount} ${pendingCount === 1 ? 'pendente' : 'pendentes'}</span>
@@ -1747,39 +1745,16 @@ function adminTripReservationsMarkup(trip, bookings, backRoute = '#/gestao') {
           <p>${escapeHtml(booking.phone)} · Embarque: ${escapeHtml(booking.boarding || 'A combinar')}</p>
           <div class="admin-reservation-actions admin-client-actions">
             ${cancelled ? '' : paid
-              ? `<button class="admin-pending-button" type="button" data-action="pending" data-id="${escapeHtml(booking.id)}">Voltar para pendente</button>`
-              : `<button class="admin-paid-button" type="button" data-action="confirmed" data-id="${escapeHtml(booking.id)}">${icon('check', 23)} Marcar como pago</button>`}
-            <a class="admin-balance-button" data-guide="whatsapp" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 23)} Falar com o cliente</a>
+              ? `<button class="admin-pending-button" type="button" data-action="pending" data-id="${escapeHtml(booking.id)}">Voltar pendente</button>`
+              : `<button class="admin-paid-button" type="button" data-action="confirmed" data-id="${escapeHtml(booking.id)}">${icon('check', 18)} Marcar pago</button>`}
+            <a class="admin-balance-button" aria-label="Falar com o cliente no WhatsApp" href="${balanceChargeLink(booking)}" target="_blank" rel="noopener noreferrer">${icon('whatsapp', 18)} WhatsApp</a>
+            <button class="admin-delete-button" type="button" aria-label="Excluir reserva" data-delete-booking="${escapeHtml(booking.id)}">${icon('close', 18)} Excluir</button>
           </div>
-          <details class="admin-other-actions"><summary data-guide="other-actions">Outras opções</summary><button class="admin-delete-button" type="button" data-delete-booking="${escapeHtml(booking.id)}">${icon('close', 20)} Excluir reserva</button></details>
         </article>`;
       }).join('') : '<p class="empty-state compact-empty">Ainda não há clientes com reserva nessa viagem.</p>'}
     </div>
     </section>
   </section>`;
-}
-
-function ownerHelpMarkup() {
-  return `<div class="owner-help-bar"><span>Seu controle, passo a passo</span><button type="button" data-owner-guide>${icon('document', 22)} Como usar o painel</button></div>`;
-}
-
-function ownerTutorialOptions(ownerId) {
-  const catalogTrip = upcomingTrips()[0] || TRIPS[0];
-  const trip = { id: catalogTrip.id, capacity: 40, reserved: 2, available: 38, enabled: true, demo: false };
-  const booking = { id: 'EXEMPLO', tripId: trip.id, firstName: 'Cliente', lastName: 'de exemplo', phone: '(88) 90000-0000', boarding: 'Boa Viagem', seats: 2, payment: 'pix', totalCents: 96000, status: 'pending' };
-  return {
-    ownerId,
-    renderTrips: () => adminReservationsByTripMarkup([trip], [booking], '#/tutorial-janu'),
-    renderTrip: (status = 'pending') => adminTripReservationsMarkup(trip, [{ ...booking, status }], '#/tutorial-janu'),
-  };
-}
-
-function renderOwnerTutorial() {
-  app.innerHTML = `${header()}<main class="wrap page admin-page owner-control"><h1>Como usar o controle da Janu</h1><p>Treine com uma reserva de exemplo. Toque nos botões indicados para aprender cada passo.</p>${ownerHelpMarkup()}<a class="admin-reservations-back" href="#/">${icon('arrowLeft', 22)} Voltar ao site</a></main>`;
-  document.title = 'Tutorial da Janu | Janu Turismo';
-  const options = ownerTutorialOptions(null);
-  disposeOwnerGuide = initOwnerGuide({ root: app, ...options });
-  if (!document.querySelector('.owner-guide[open]')) openOwnerTutorial(options);
 }
 
 function confirmOwnerChange({ title, message, label, danger = false }) {
@@ -1881,10 +1856,10 @@ async function loadAdmin() {
     const activeBookings = bookings.filter(booking => booking.status !== 'cancelled');
     const pendingCount = activeBookings.filter(booking => booking.status === 'pending').length;
     content.innerHTML = `<section class="admin-reservations-overview admin-owner-reservations">
-      <div class="owner-overview-heading"><h2>1. Escolha a viagem</h2><button type="button" data-refresh-owner>Atualizar reservas</button></div>
+      <div class="owner-overview-heading"><h2>Reservas por viagem</h2><button type="button" data-refresh-owner aria-label="Atualizar reservas">Atualizar</button></div>
       <p>Toque em “Ver clientes” na viagem que você quer cuidar.</p>
       <div class="admin-reservation-trips">${adminReservationsByTripMarkup(trips, bookings, detailRoute)}</div>
-      <div class="owner-overview-summary" role="group" aria-label="Resumo geral"><div><strong>${trips.length}</strong><span>Viagens</span></div><div><strong>${activeBookings.length}</strong><span>Reservas</span></div><div class="is-pending"><strong>${pendingCount}</strong><span>Pagamentos pendentes</span></div></div>
+      <div class="owner-overview-summary" role="group" aria-label="Resumo geral"><div><strong>${trips.length}</strong><span>Viagens</span></div><div><strong>${activeBookings.length}</strong><span>Reservas</span></div><div class="is-pending"><strong>${pendingCount}</strong><span>Pendentes</span></div></div>
     </section>`;
   } else {
     content.innerHTML = `${accessSetup}<div class="admin-management-tabs" role="tablist" aria-label="Gestão">
@@ -1931,10 +1906,9 @@ async function loadAdmin() {
     </div>`;
   }
   if (ownerOnly) {
-    content.insertAdjacentHTML('afterbegin', ownerHelpMarkup());
     content.closest('main').querySelector(':scope > p').textContent = selectedTrip ? 'Veja os clientes, confirme pagamentos e organize as vagas.' : 'Suas viagens e seus clientes em um só lugar.';
   }
-  content.querySelector('[data-guide="clients"]')?.addEventListener('click', () => {
+  content.querySelector('[data-view-clients]')?.addEventListener('click', () => {
     content.querySelector('#admin-client-list')?.scrollIntoView({ behavior: 'instant', block: 'start' });
   });
   const clientSearch = content.querySelector('[data-client-search]');
@@ -2097,13 +2071,9 @@ async function loadAdmin() {
       showToast(action === 'confirmed' ? 'Pagamento marcado como pago.' : action === 'pending' ? 'Pagamento marcado como pendente.' : 'Reserva cancelada.');
     } catch (error) { showToast(error.message); button.disabled = false; }
   }));
-  disposeOwnerGuide();
-  disposeOwnerGuide = ownerOnly ? initOwnerGuide({ root: content, ...ownerTutorialOptions(currentUser().uid) }) : () => {};
 }
 
 function render() {
-  disposeOwnerGuide();
-  disposeOwnerGuide = () => {};
   disposeAdminExpiry();
   disposeAdminExpiry = () => {};
   disposeInventory();
@@ -2122,7 +2092,6 @@ function render() {
   else if (route[0] === 'reservas') renderMyReservations();
   else if (route[0] === 'perfil') renderProfile();
   else if (route[0] === 'gestao') renderAdmin();
-  else if (route[0] === 'tutorial-janu') renderOwnerTutorial();
   else if (route[0] === 'viagens') renderTrips();
   else if (route[0] === 'contato') renderContact();
   else if (route[0] === 'politicas') renderPolicies();

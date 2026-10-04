@@ -3697,163 +3697,122 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
   }
 }
 
-/* Controle da Janu: leitura confortável e uma ação clara por vez. */
-.owner-control { color: #123555; font-size: 18px; line-height: 1.5; }
-.owner-control h1 { font-size: clamp(28px, 6vw, 36px); line-height: 1.2; }
-.owner-control h2 { font-size: 26px; line-height: 1.3; }
-.owner-control h3 { font-size: 24px; line-height: 1.3; }
-.owner-control > p, .owner-control #admin-content > p { color: #405a71; font-size: 18px; }
+/* Controle da Janu: painel compacto com ações lado a lado. */
+.owner-control { color: #123555; font-size: 16px; line-height: 1.45; }
+.owner-control h1 { font-size: clamp(24px, 5vw, 28px); line-height: 1.2; }
+.owner-control h2 { font-size: 21px; line-height: 1.3; }
+.owner-control h3 { font-size: 20px; line-height: 1.3; }
+.owner-control > p, .owner-control #admin-content > p { color: #405a71; font-size: 16px; }
 .owner-control button, .owner-control input, .owner-control select { font: inherit; }
 .owner-control button, .owner-control summary, .owner-control a { touch-action: manipulation; }
 .owner-control button:disabled { opacity: .6; cursor: wait; }
-.owner-help-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 24px 0; padding: 18px; border: 2px solid #97b8db; border-radius: 16px; background: #ecf4ff; }
-.owner-help-bar > span { font-weight: 800; }
-.owner-help-bar button, .owner-overview-heading button { display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-height: 54px; padding: 12px 16px; border: 2px solid #124f8e; border-radius: 12px; background: #fff; color: #124f8e; font-weight: 800; }
-.owner-overview-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 28px 0; }
-.owner-overview-summary > div { padding: 16px 12px; border: 2px solid #c1d3e6; border-radius: 15px; background: #f6faff; text-align: center; }
-.owner-overview-summary strong { display: block; font-size: 34px; line-height: 1.2; }
-.owner-overview-summary span { display: block; margin-top: 8px; font-size: 16px; font-weight: 700; }
+.owner-overview-heading button { display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 44px; padding: 8px 10px; border: 1.5px solid #124f8e; border-radius: 9px; background: #fff; color: #124f8e; font-size: 14px; font-weight: 800; }
+.owner-overview-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 18px 0; }
+.owner-overview-summary > div { min-width: 0; padding: 12px 8px; border: 1.5px solid #c1d3e6; border-radius: 12px; background: #f6faff; text-align: center; }
+.owner-overview-summary strong { display: block; font-size: 26px; line-height: 1.2; }
+.owner-overview-summary span { display: block; margin-top: 4px; font-size: 14px; font-weight: 700; }
 .owner-overview-summary .is-pending { border-color: #d09b28; background: #fff6d9; color: #704c00; }
-.owner-overview-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.owner-control .admin-owner-reservations > p { margin: 12px 0 22px; color: #405a71; font-size: 18px; }
-.owner-control .admin-reservation-trips { gap: 18px; }
-.owner-control .admin-reservation-trip-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; padding: 22px; border: 2px solid #92b2d2; border-left: 7px solid #155fa5; border-radius: 18px; box-shadow: 0 5px 16px #1235550c; }
+.owner-overview-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.owner-control .admin-owner-reservations { margin-top: 16px; }
+.owner-control .admin-owner-reservations > p { margin: 8px 0 14px; color: #405a71; font-size: 15px; }
+.owner-control .admin-reservation-trips { gap: 12px; }
+.owner-control .admin-reservation-trip-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 14px; border: 1.5px solid #92b2d2; border-left: 5px solid #155fa5; border-radius: 13px; box-shadow: 0 3px 10px #1235550c; }
 .owner-control .admin-reservation-trip-link:hover { border-color: #155fa5; }
-.owner-control .admin-reservation-trip-main { gap: 8px; }
-.owner-control .admin-reservation-trip-main strong { font-size: 25px; line-height: 1.3; white-space: normal; overflow: visible; }
-.owner-control .admin-reservation-trip-main small, .owner-control .admin-reservation-trip-main > span { color: #405a71; font-size: 17px; }
-.owner-control .admin-reservation-trip-status { grid-template-columns: auto auto; gap: 8px; justify-items: stretch; }
-.owner-control .admin-reservation-trip-status small { padding: 8px 12px; font-size: 16px; text-align: center; border: 1px solid currentColor; }
-.admin-trip-open { display: inline-flex; grid-column: 1 / -1; align-items: center; justify-content: center; gap: 12px; min-height: 48px; padding: 9px 15px; border-radius: 11px; background: #135ba0; color: #fff; font-weight: 800; font-size: 15px; }
+.owner-control .admin-reservation-trip-main { gap: 4px; }
+.owner-control .admin-reservation-trip-main strong { font-size: 20px; line-height: 1.3; white-space: normal; overflow: visible; }
+.owner-control .admin-reservation-trip-main small, .owner-control .admin-reservation-trip-main > span { color: #405a71; font-size: 14px; }
+.owner-control .admin-reservation-trip-status { grid-template-columns: auto auto; gap: 6px; justify-items: stretch; }
+.owner-control .admin-reservation-trip-status small { padding: 6px 9px; font-size: 13px; text-align: center; border: 1px solid currentColor; }
+.admin-trip-open { display: inline-flex; grid-column: 1 / -1; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 8px 12px; border-radius: 9px; background: #135ba0; color: #fff; font-weight: 800; font-size: 14px; }
 .admin-trip-open svg { color: #fff; }
-.owner-control .admin-trip-open { min-height: 54px; font-size: 18px; }
+.owner-control .admin-trip-open { font-size: 15px; }
 .owner-control .admin-reservation-trip-status .admin-trip-open svg { display: block; color: #fff; }
-.owner-control .admin-trip-reservations-page { margin-top: 24px; }
-.owner-control .admin-reservations-back { gap: 10px; min-height: 54px; margin-bottom: 22px; padding: 10px 14px; border: 2px solid #9ab8d6; border-radius: 12px; background: #f2f7fd; color: #124f8e; font-size: 18px; }
-.owner-control .admin-trip-reservations-heading { margin: 8px 0 22px; align-items: center; }
-.owner-control .admin-trip-reservations-heading h2 { font-size: 30px; }
-.owner-control .admin-trip-reservations-heading p { color: #405a71; font-size: 18px; }
-.owner-control .admin-add-passenger-button { min-height: 56px; padding: 14px 18px; border: 2px solid #124f8e; border-radius: 12px; background: #135ba0; font-size: 18px; }
-.owner-control .admin-seat-metrics { gap: 12px; margin: 18px 0; }
-.owner-control .admin-seat-metrics > div { padding: 16px 10px; border: 2px solid #b6cde3; border-radius: 14px; background: #f5f9ff; }
+.owner-control .admin-trip-reservations-page { margin-top: 16px; }
+.owner-control .admin-reservations-back { gap: 7px; min-height: 44px; margin-bottom: 14px; padding: 8px 10px; border: 1.5px solid #9ab8d6; border-radius: 9px; background: #f2f7fd; color: #124f8e; font-size: 15px; }
+.owner-control .admin-trip-reservations-heading { margin: 6px 0 14px; align-items: center; }
+.owner-control .admin-trip-reservations-heading h2 { font-size: 24px; }
+.owner-control .admin-trip-reservations-heading p { color: #405a71; font-size: 15px; }
+.owner-control .admin-add-passenger-button { min-height: 44px; padding: 9px 12px; border: 1.5px solid #124f8e; border-radius: 9px; background: #135ba0; font-size: 15px; }
+.owner-control .admin-seat-metrics { gap: 8px; margin: 14px 0; }
+.owner-control .admin-seat-metrics > div { padding: 12px 8px; border: 1.5px solid #b6cde3; border-radius: 11px; background: #f5f9ff; }
 .owner-control .admin-seat-metrics > div:last-child { background: #eaf8f1; border-color: #82b99b; }
-.owner-control .admin-seat-metrics span { color: #36536f; font-size: 16px; font-weight: 700; }
-.owner-control .admin-seat-metrics strong { margin-top: 8px; color: #123555; font-size: 34px; }
-.admin-view-clients { display: inline-flex; justify-content: center; align-items: center; gap: 10px; width: 100%; min-height: 54px; padding: 12px; border: 2px solid #135ba0; border-radius: 12px; background: #135ba0; color: #fff; font-weight: 800; }
-.admin-vacancy-details { margin: 18px 0 28px; border: 2px solid #b9cfe4; border-radius: 14px; background: #f5f9ff; }
-.admin-vacancy-details > summary { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 14px; color: #124f8e; cursor: pointer; font-weight: 800; }
-.admin-vacancy-details > summary::after, .admin-other-actions > summary::after { content: ''; width: 10px; height: 10px; margin-left: auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); flex: 0 0 auto; }
-.admin-vacancy-details[open] > summary::after, .admin-other-actions[open] > summary::after { transform: rotate(225deg); }
-.owner-control .admin-vacancy-control { grid-template-columns: 1fr 1fr; padding: 18px; margin: 0; border: 0; background: transparent; gap: 16px; }
+.owner-control .admin-seat-metrics span { color: #36536f; font-size: 14px; font-weight: 700; }
+.owner-control .admin-seat-metrics strong { margin-top: 4px; color: #123555; font-size: 26px; }
+.admin-view-clients { display: inline-flex; justify-content: center; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 9px 10px; border: 1.5px solid #135ba0; border-radius: 9px; background: #135ba0; color: #fff; font-weight: 800; }
+.admin-vacancy-details { margin: 14px 0 20px; border: 1.5px solid #b9cfe4; border-radius: 11px; background: #f5f9ff; }
+.admin-vacancy-details > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 12px; color: #124f8e; cursor: pointer; font-weight: 800; }
+.admin-vacancy-details > summary::after { content: ''; width: 8px; height: 8px; margin-left: auto; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); flex: 0 0 auto; }
+.admin-vacancy-details[open] > summary::after { transform: rotate(225deg); }
+.owner-control .admin-vacancy-control { grid-template-columns: 1fr 1fr; padding: 14px; margin: 0; border: 0; background: transparent; gap: 12px; }
 .owner-control .admin-vacancy-control > div, .owner-control .admin-vacancy-control > button { grid-column: 1 / -1; }
-.owner-control .admin-vacancy-control strong { font-size: 22px; }
-.owner-control .admin-vacancy-control small, .owner-control .admin-vacancy-control label { font-size: 17px; color: #405a71; }
-.owner-control .admin-vacancy-control input, .owner-control .admin-vacancy-control select { min-height: 54px; border: 2px solid #91acc7; font-size: 19px; }
-.owner-control .admin-vacancy-control button { min-height: 56px; padding: 14px; border-radius: 12px; background: #135ba0; font-size: 19px; }
+.owner-control .admin-vacancy-control strong { font-size: 18px; }
+.owner-control .admin-vacancy-control small, .owner-control .admin-vacancy-control label { font-size: 15px; color: #405a71; }
+.owner-control .admin-vacancy-control input, .owner-control .admin-vacancy-control select { min-height: 44px; border: 1.5px solid #91acc7; font-size: 16px; }
+.owner-control .admin-vacancy-control button { min-height: 44px; padding: 10px; border-radius: 9px; background: #135ba0; font-size: 16px; }
 .admin-client-section { scroll-margin-top: 90px; }
-.admin-client-section > h3 { margin-bottom: 8px; }
-.admin-clients-hint { margin-top: 0; color: #405a71; }
-.owner-control .admin-payment-summary { gap: 10px; margin: 18px 0; }
-.owner-control .admin-payment-summary span { padding: 9px 15px; border: 1px solid currentColor; font-size: 17px; }
-.admin-client-tools { margin: 20px 0; }
-.admin-client-tools > label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; color: #123555; font-weight: 800; }
-.admin-client-tools input { flex-basis: 100%; width: 100%; min-height: 54px; padding: 12px 14px; margin-top: 5px; border: 2px solid #91acc7; border-radius: 12px; color: #123555; background: #fff; font: inherit; }
-.admin-client-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
-.admin-client-filters button { min-height: 50px; padding: 10px 8px; border: 2px solid #a5bed7; border-radius: 11px; background: #fff; color: #124f8e; font-weight: 800; }
+.admin-client-section > h3 { margin-bottom: 6px; }
+.admin-clients-hint { margin-top: 0; color: #405a71; font-size: 15px; }
+.owner-control .admin-payment-summary { gap: 8px; margin: 14px 0; }
+.owner-control .admin-payment-summary span { padding: 6px 10px; border: 1px solid currentColor; font-size: 14px; }
+.admin-client-tools { margin: 14px 0; }
+.admin-client-tools > label { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; color: #123555; font-weight: 800; }
+.admin-client-tools input { flex-basis: 100%; width: 100%; min-height: 44px; padding: 9px 12px; margin-top: 4px; border: 1.5px solid #91acc7; border-radius: 9px; color: #123555; background: #fff; font: inherit; }
+.owner-control .admin-client-tools input { font-size: 16px; }
+.admin-client-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.admin-client-filters button { min-height: 44px; padding: 8px 6px; border: 1.5px solid #a5bed7; border-radius: 9px; background: #fff; color: #124f8e; font-weight: 800; }
 .admin-client-filters [aria-pressed="true"] { border-color: #135ba0; background: #135ba0; color: #fff; }
-.admin-search-result { margin-top: 12px; color: #405a71; }
-.owner-control .admin-trip-clients { gap: 22px; }
-.owner-control .admin-reservation-person { padding: 22px; border: 2px solid #d4a633; border-left-width: 8px; border-radius: 17px; background: #fffaf0; }
+.admin-search-result { margin-top: 8px; color: #405a71; }
+.owner-control .admin-trip-clients { gap: 14px; }
+.owner-control .admin-reservation-person { padding: 14px; border: 1.5px solid #d4a633; border-left-width: 5px; border-radius: 13px; background: #fffaf0; }
 .owner-control .admin-reservation-person.booking-state-confirmed { border-color: #409365; background: #f1fcf5; }
 .owner-control .admin-reservation-person.booking-state-cancelled { border-color: #c49797; background: #faf4f4; }
 .admin-reservation-person[hidden] { display: none !important; }
-.owner-control .admin-reservation-person-head { gap: 12px; flex-wrap: wrap; }
-.owner-control .admin-reservation-person-head strong { font-size: 24px; line-height: 1.3; }
-.owner-control .admin-reservation-person-head small { font-size: 15px; color: #405a71; margin-top: 6px; }
-.owner-control .admin-payment-badge { min-height: 40px; padding: 8px 14px; border: 1px solid currentColor; font-size: 17px; }
-.owner-control .admin-reservation-person > p { margin-top: 14px; color: #36536f; font-size: 18px; line-height: 1.6; }
-.owner-control .admin-client-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px; }
-.owner-control .admin-client-actions button, .owner-control .admin-client-actions a { gap: 9px; min-height: 58px; padding: 14px 12px; border: 2px solid; border-radius: 12px; font-size: 18px; line-height: 1.35; text-align: center; }
+.owner-control .admin-reservation-person-head { gap: 8px; flex-wrap: wrap; }
+.owner-control .admin-reservation-person-head strong { font-size: 20px; line-height: 1.3; }
+.owner-control .admin-reservation-person-head small { font-size: 13px; color: #405a71; margin-top: 3px; }
+.owner-control .admin-payment-badge { min-height: 32px; padding: 6px 10px; border: 1px solid currentColor; font-size: 14px; }
+.owner-control .admin-reservation-person > p { margin-top: 9px; color: #36536f; font-size: 15px; line-height: 1.45; }
+.owner-control .admin-client-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.owner-control .booking-state-cancelled .admin-client-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.owner-control .admin-client-actions button, .owner-control .admin-client-actions a { min-width: 0; gap: 6px; min-height: 44px; padding: 8px 9px; border: 1.5px solid; border-radius: 9px; font-size: 14px; line-height: 1.3; text-align: center; }
+.owner-control .admin-client-actions svg { flex-shrink: 0; }
 .owner-control .admin-client-actions .admin-paid-button { border-color: #126c3c; background: #126c3c !important; }
 .owner-control .admin-client-actions .admin-pending-button { border-color: #aa7914; color: #704c00; background: #fff1c1; }
 .owner-control .admin-client-actions .admin-balance-button { border-color: #3e9264; color: #125b36; background: #fff; }
-.admin-other-actions { margin-top: 20px; border-top: 1px solid #d6d6c7; }
-.admin-other-actions > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 12px 0; color: #405a71; font-weight: 700; cursor: pointer; }
-.admin-other-actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 54px; padding: 12px; border: 2px solid #b33a36; border-radius: 11px; color: #9b2521; background: #fff3f2; font-weight: 800; }
-.owner-control .admin-editor { padding: 20px; border: 2px solid #8fb0d0; border-radius: 16px; }
-.owner-control .admin-editor label { font-size: 18px; }
-.owner-control .admin-editor input:not([type="hidden"]), .owner-control .admin-editor select { min-height: 54px; border: 2px solid #91acc7; font-size: 19px; }
-.owner-control .admin-editor > button { min-height: 58px; background: #135ba0; font-size: 19px; }
+.owner-control .admin-client-actions .admin-delete-button { border-color: #b33a36; color: #a33333; background: #fff3f2; }
+.owner-control .admin-editor { padding: 14px; border: 1.5px solid #8fb0d0; border-radius: 12px; }
+.owner-control .admin-editor label { font-size: 16px; }
+.owner-control .admin-editor input:not([type="hidden"]), .owner-control .admin-editor select { min-height: 44px; border: 1.5px solid #91acc7; font-size: 16px; }
+.owner-control .admin-editor > button { min-height: 44px; background: #135ba0; font-size: 16px; }
 .owner-control .admin-trip-add-passenger-head { flex-wrap: wrap; }
-.owner-control .admin-trip-add-passenger-head strong { font-size: 23px; }
-.owner-control .admin-trip-add-passenger-head small { font-size: 17px; color: #405a71; }
-.admin-trip-add-passenger-close { display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: auto; height: auto; min-height: 48px; padding: 10px 12px; font-size: 16px; line-height: 1.3; }
-body:has(main.owner-control) .bottom-nav .nav-item span { font-size: 15px; font-weight: 800; }
-body:has(main.owner-control) #toast { font-size: 18px; line-height: 1.5; }
+.owner-control .admin-trip-add-passenger-head strong { font-size: 20px; }
+.owner-control .admin-trip-add-passenger-head small { font-size: 15px; color: #405a71; }
+.admin-trip-add-passenger-close { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: auto; height: auto; min-height: 40px; padding: 8px 10px; font-size: 14px; line-height: 1.3; }
+body:has(main.owner-control) .bottom-nav .nav-item span { font-size: 14px; font-weight: 800; }
+body:has(main.owner-control) #toast { font-size: 16px; line-height: 1.45; }
 
-.owner-action-confirm { width: min(500px, calc(100vw - 28px)); max-height: calc(100dvh - 32px); padding: 26px; border: 2px solid #8ba9c7; border-radius: 20px; background: #fff; color: #123555; }
+.owner-action-confirm { width: min(430px, calc(100vw - 28px)); max-height: calc(100dvh - 32px); padding: 20px; border: 1.5px solid #8ba9c7; border-radius: 14px; background: #fff; color: #123555; }
 .owner-action-confirm::backdrop { background: #071d3ac2; }
-.owner-action-confirm h2 { margin-top: 0; font-size: 26px; line-height: 1.3; }
-.owner-action-confirm p { font-size: 19px; line-height: 1.6; }
-.owner-action-confirm button { display: block; width: 100%; min-height: 58px; margin-top: 14px; padding: 14px; border: 2px solid #135ba0; border-radius: 12px; background: #135ba0; color: #fff; font-size: 19px; font-weight: 800; }
+.owner-action-confirm h2 { margin-top: 0; font-size: 22px; line-height: 1.3; }
+.owner-action-confirm p { font-size: 16px; line-height: 1.45; }
+.owner-action-confirm button { display: block; width: 100%; min-height: 44px; margin-top: 10px; padding: 10px; border: 1.5px solid #135ba0; border-radius: 9px; background: #135ba0; color: #fff; font-size: 16px; font-weight: 800; }
 .owner-action-confirm [data-cancel-change] { color: #124f8e; background: #fff; }
 .owner-action-confirm .is-danger { border-color: #a52724; background: #a52724; }
 
-/* Tutorial por cliques: o destaque mostra exatamente onde tocar. */
-.owner-guide-open { overflow: hidden; }
-.owner-guide-open .scroll-guide-arrow, .owner-guide-open .scroll-guide-track { display: none !important; }
-.owner-guide { position: fixed; inset: 0; display: none; flex-direction: column; width: 100vw; height: 100vh; height: 100dvh; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: #f5f8fc; overflow: hidden; }
-.owner-guide[open] { display: flex; }
-.owner-guide::backdrop { background: #09234bbf; }
-.owner-guide-top { position: relative; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex: 0 0 auto; padding: 14px 20px; background: #103e6d; color: #fff; }
-.owner-guide-top strong, .owner-guide-top span { display: block; }
-.owner-guide-top strong { font-size: 22px; }
-.owner-guide-top span { margin-top: 3px; font-size: 15px; }
-.owner-guide-top button { min-height: 48px; padding: 9px 13px; border: 2px solid #ffffff90; border-radius: 11px; color: #fff; background: transparent; font-size: 16px; font-weight: 750; }
-.owner-guide-stage { width: 100%; flex: 1 1 auto; min-height: 0; overflow: auto; padding: 24px max(18px, calc((100vw - 820px) / 2)) 70vh; scroll-behavior: auto; }
-.owner-guide-stage [data-guide], .owner-guide-stage button, .owner-guide-stage summary { scroll-margin-top: 18px; }
-.owner-guide-stage > h1 { margin-top: 0; }
-.owner-guide-stage .admin-trip-reservations-page { margin-top: 0; }
-.owner-guide-welcome { margin: 8px auto; max-width: 650px; padding: 26px; border: 2px solid #9db9d4; border-radius: 18px; background: #fff; }
-.owner-guide-welcome h1 { margin: 12px 0; }
-.owner-guide-welcome p { margin-bottom: 26px; color: #405a71; font-size: 19px; }
-.owner-guide-welcome button { width: 100%; min-height: 60px; padding: 14px; border: 2px solid #124f8e; border-radius: 13px; background: #135ba0; color: #fff; font-size: 21px; font-weight: 800; }
-.owner-demo-label { color: #405a71; font-size: 18px; }
-.owner-guide-spotlight { position: fixed; z-index: 2; border: 4px solid #ffd047; border-radius: 16px; box-shadow: 0 0 0 9999px #071d3abf; pointer-events: none; }
-.owner-guide-hint { position: fixed; z-index: 5; max-height: calc(100dvh - 100px); overflow: visible; padding: 19px 21px; border: 2px solid #ffd047; border-radius: 17px; background: #fff; color: #123555; box-shadow: 0 10px 35px #0003; pointer-events: none; }
-.owner-guide-progress { display: block; color: #496174; font-size: 15px; font-weight: 750; }
-.owner-guide-hint h2 { margin: 8px 0; font-size: 22px; line-height: 1.3; }
-.owner-guide-hint p { margin: 0; font-size: 18px; line-height: 1.5; }
-.owner-guide-instruction { display: block; margin-top: 13px; padding-top: 12px; border-top: 1px solid #d6e2ee; color: #124f8e; font-size: 17px; }
-.owner-guide-arrow { position: absolute; left: var(--arrow-left, 30px); top: -34px; width: 32px; height: 34px; overflow: visible; fill: none; stroke: #ffd047; stroke-width: 4px; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 2px #123555); }
-.owner-guide-hint.is-above .owner-guide-arrow { top: auto; bottom: -34px; transform: rotate(180deg); }
-
 @media (max-width: 620px) {
-  .owner-help-bar { flex-direction: column; align-items: stretch; }
-  .owner-help-bar button { width: 100%; }
-  .owner-overview-heading { align-items: stretch; flex-direction: column; }
-  .owner-control .admin-reservation-trip-link { grid-template-columns: 1fr; padding: 20px; }
+  .owner-control .admin-reservation-trip-link { grid-template-columns: 1fr; }
   .owner-control .admin-reservation-trip-status { width: 100%; grid-template-columns: 1fr 1fr; }
-  .owner-control .admin-client-actions { grid-template-columns: 1fr; }
   .owner-control .admin-trip-reservations-heading { flex-direction: column; align-items: stretch; }
-  .owner-guide-top { gap: 10px; padding: 12px 14px; }
-  .owner-guide-top strong { font-size: 20px; }
-  .owner-guide-top span { max-width: 200px; font-size: 14px; }
-  .owner-guide-top button { max-width: 115px; padding: 8px; line-height: 1.3; }
-  .owner-guide-welcome { padding: 20px; }
 }
 @media (max-width: 460px) {
-  .owner-overview-summary { grid-template-columns: 1fr 1fr; }
-  .owner-overview-summary .is-pending { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 16px; }
-  .owner-overview-summary .is-pending span { margin: 0; }
+  .owner-overview-summary span { font-size: 13px; }
   .owner-control .admin-seat-metrics { gap: 6px; }
-  .owner-control .admin-seat-metrics > div { padding: 14px 6px; }
-  .owner-control .admin-seat-metrics span { min-height: 48px; font-size: 16px; }
+  .owner-control .admin-seat-metrics > div { padding: 10px 6px; }
+  .owner-control .admin-seat-metrics span { min-height: 38px; font-size: 13px; }
   .owner-control .admin-vacancy-control { grid-template-columns: 1fr; }
   .owner-control .form-grid { grid-template-columns: 1fr; }
-  .owner-control .admin-reservation-person { padding: 18px; }
-  .owner-control .admin-client-filters button { font-size: 16px; }
-  .owner-guide-hint { padding: 16px 17px; }
-  .owner-guide-hint p { font-size: 17px; }
-  .owner-guide-instruction { font-size: 16px; }
+  .owner-control .admin-client-filters button { font-size: 14px; }
+  .owner-control .admin-client-actions { gap: 6px; }
+  .owner-control .admin-client-actions button, .owner-control .admin-client-actions a { padding: 8px 6px; }
+  .owner-control .admin-client-actions svg { display: none; }
 }
