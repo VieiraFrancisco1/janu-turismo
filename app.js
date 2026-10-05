@@ -3,6 +3,7 @@ import { bookingId } from './booking-model.js';
 import { photoCarouselMarkup, explorePhotosMarkup, initPhotoGallery } from './photo-gallery.js';
 import { prepareBookingAnimation, startBookingAnimation } from './booking-animation.js';
 import { initScrollGuide } from './scroll-guide.js';
+import { buildPassengerList, downloadPassengerList, openPassengerPrintWindow, printPassengerList } from './passenger-list.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
 import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, watchTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking, adminCreatePhoneAccount, adminSetCurrentPassword, isProvisionedAdminAccount, adminAccess } from './data.js';
 
@@ -64,6 +65,7 @@ const paths = {
   copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
   instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6"/>',
   document: '<path d="M14 2H5v20h14V7l-5-5Zm0 0v5h5M8 12h8M8 16h8"/>',
+  printer: '<path d="M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="7"/><path d="M18 12h.01"/>',
   shield: '<path d="M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6l-9-4Z"/><path d="m8 12 3 3 5-6"/>',
   menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
 };
@@ -1694,6 +1696,10 @@ function adminTripReservationsMarkup(trip, bookings, backRoute = '#/gestao') {
       <div><span>Vagas ocupadas</span><strong>${filled}</strong></div>
       <div><span>Vagas livres</span><strong>${trip.demo ? '—' : trip.available}</strong></div>
     </div>
+    <div class="admin-passenger-export" role="group" aria-label="Relação de passageiros desta viagem">
+      <button type="button" data-passenger-export="pdf">${icon('document', 18)} Baixar lista (PDF)</button>
+      <button type="button" data-passenger-export="print">${icon('printer', 18)} Imprimir lista</button>
+    </div>
     <details class="admin-vacancy-details">
     <summary>${icon('ticket', 20)} Alterar vagas da viagem</summary>
     <form class="admin-vacancy-control" data-capacity-control data-id="${escapeHtml(trip.id)}">
@@ -1940,6 +1946,29 @@ async function loadAdmin() {
     catch { button.disabled = false; showToast('Não foi possível atualizar. Tente novamente.'); }
   });
   const addPassengerButton = content.querySelector('[data-add-passenger]');
+  content.querySelectorAll('[data-passenger-export]').forEach(button => button.addEventListener('click', async () => {
+    if (button.disabled || !selectedTrip) return;
+    const original = button.innerHTML;
+    let printWindow;
+    button.disabled = true;
+    try {
+      if (button.dataset.passengerExport === 'print') printWindow = openPassengerPrintWindow();
+      button.textContent = 'Preparando lista…';
+      const latest = await adminFetch();
+      if (!latest.trips.some(trip => trip.id === selectedTrip.id)) throw new Error('Essa viagem não está mais disponível no controle de reservas.');
+      const liveTrip = latest.catalog?.find(trip => trip.id === selectedTrip.id);
+      const trip = normalizeTrip({ ...(TRIPS.find(trip => trip.id === selectedTrip.id) || { id: selectedTrip.id, title: tripName(selectedTrip.id) }), ...liveTrip });
+      const list = buildPassengerList(trip, latest.bookings);
+      if (printWindow) { printPassengerList(printWindow, list); showToast('Relação pronta para impressão.'); }
+      else { await downloadPassengerList(list); showToast('Lista em PDF baixada.'); }
+    } catch (error) {
+      printWindow?.close();
+      showToast(error.message || 'Não foi possível preparar a lista. Tente novamente.');
+    } finally {
+      button.innerHTML = original;
+      button.disabled = false;
+    }
+  }));
   const tripPassengerForm = content.querySelector('#trip-manual-booking');
   addPassengerButton?.addEventListener('click', () => {
     if (!tripPassengerForm) return;

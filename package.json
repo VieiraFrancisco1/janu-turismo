@@ -6,10 +6,12 @@
   "scripts": {
     "build": "node build.mjs",
     "dev": "npm run build && node server.mjs",
-    "test:reservas": "node --experimental-vm-modules tests/reservations.mjs"
+    "test:reservas": "node --experimental-vm-modules tests/reservations.mjs",
+    "test:passageiros": "node --test tests/passenger-list.mjs"
   },
   "dependencies": {
-    "firebase": "^12.0.0"
+    "firebase": "^12.0.0",
+    "pdf-lib": "1.17.1"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",

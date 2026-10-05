@@ -12,8 +12,9 @@ await cp('assets', 'dist/assets', { recursive: true });
 
 await build({
   entryPoints: ['app.js'],
-  outfile: 'dist/app.js',
+  outdir: 'dist',
   bundle: true,
+  splitting: true,
   format: 'esm',
   target: 'es2022',
   minify: true,
