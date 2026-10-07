@@ -3547,6 +3547,35 @@ body:has(.home-page, .trips-page) { background: #e7edf4; }
 .admin-trip-add-passenger[hidden] {
   display: none !important;
 }
+
+.admin-passenger-export [data-word-open] { grid-column: 1 / -1; }
+.admin-word-panel { margin: 0 0 14px; padding: 14px; border: 1.5px solid #91acc7; border-radius: 12px; background: #f8fbff; color: #173c66; scroll-margin-top: 100px; }
+.admin-word-panel [hidden], .admin-word-panel[hidden] { display: none !important; }
+.word-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.word-panel-heading h3 { margin: 0; font-size: 18px; }
+.admin-word-panel p { margin: 8px 0; font-size: 14px; line-height: 1.4; color: #405a71; }
+.admin-word-panel h4 { margin: 16px 0 6px; font-size: 16px; }
+.admin-word-panel label { display: grid; gap: 5px; font-size: 14px; font-weight: 700; }
+.admin-word-panel input:not([type="checkbox"]), .admin-word-panel select { width: 100%; min-height: 44px; padding: 9px; border: 1.5px solid #91acc7; border-radius: 8px; background: #fff; color: #173c66; font: inherit; font-size: 16px; }
+.admin-word-panel input[type="file"] { font-size: 14px; }
+.admin-word-panel input[type="file"]::file-selector-button { min-height: 40px; border: 0; border-radius: 6px; margin-right: 8px; padding: 8px; background: #e8f1fc; color: #173c66; font: inherit; font-weight: 700; }
+.admin-word-panel .word-file-hint { font-size: 12px; }
+.word-file-label { margin-top: 14px; }
+.word-mapping { margin: 10px 0; padding: 10px; border: 1px solid #cbdceb; border-radius: 8px; }
+.word-mapping summary { cursor: pointer; min-height: 28px; font-size: 14px; font-weight: 700; }
+.word-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.word-person { min-width: 0; margin: 12px 0; padding: 10px 12px 12px; border: 1px solid #b7cbde; border-radius: 9px; background: #fff; }
+.word-person legend { max-width: 100%; padding: 0 4px; font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+.admin-word-panel .word-person > p { margin: 0 0 10px; font-size: 12px; }
+.admin-word-panel .word-missing { border-color: #bd8b20 !important; background: #fffaf0 !important; }
+.admin-word-panel .is-error { color: #a33333; font-weight: 700; }
+.admin-word-panel .word-blank-control { display: flex; align-items: flex-start; gap: 8px; margin: 14px 0; line-height: 1.4; }
+.word-blank-control input { width: 22px; height: 22px; margin: 0; flex-shrink: 0; }
+.word-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.admin-word-panel button { min-height: 44px; padding: 9px 12px; border: 1px solid #91acc7; border-radius: 8px; background: #fff; color: #173c66; font: inherit; font-size: 14px; font-weight: 800; cursor: pointer; }
+.admin-word-panel [data-word-download] { flex: 1; border-color: #135ba0; background: #135ba0; color: #fff; }
+.admin-word-panel button:disabled, .admin-word-panel input:disabled, .admin-word-panel select:disabled { opacity: .55; cursor: default; }
+@media (max-width: 480px) { .word-fields { grid-template-columns: 1fr; } .admin-word-panel { padding: 12px; } }
 .admin-trip-add-passenger-head {
   display: flex;
   align-items: flex-start;

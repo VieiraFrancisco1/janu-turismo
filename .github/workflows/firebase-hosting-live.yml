@@ -29,6 +29,9 @@ jobs:
       - name: Test passenger lists and PDF export
         run: npm run test:passageiros
 
+      - name: Test Word passenger templates
+        run: npm run test:word
+
       - name: Setup Java for Firestore tests
         uses: actions/setup-java@v4
         with:

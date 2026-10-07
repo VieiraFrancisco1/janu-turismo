@@ -5,6 +5,7 @@ import { initializeTestEnvironment, assertFails } from '@firebase/rules-unit-tes
 import * as firestore from 'firebase/firestore';
 import { prepareCatalog, bookingClosesAt } from '../booking-model.js';
 import { cearaDate, afterTripDate, tripDeadline, reservationVisible } from '../reservation-lifecycle.js';
+import { buildTripPassengers, passengerRecordGroups, normalizePassenger } from '../passenger-records.js';
 const rules = (await fs.readFile(new URL('../firestore.rules.template', import.meta.url), 'utf8')).replaceAll('__ADMIN_UID__', 'agency');
 const environment = await initializeTestEnvironment({ projectId: 'demo-janu', firestore: { rules, host: '127.0.0.1', port: 8080 } });
 const { doc, setDoc, getDoc, getDocs, collection, Timestamp, serverTimestamp, updateDoc, runTransaction } = firestore;
@@ -76,6 +77,26 @@ try {
   await assertFails(getDoc(doc(anonymous, 'bookings', saved.id)));
   await assertFails(getDocs(collection(customer, 'bookings')));
   await assertFails(updateDoc(doc(customer, 'bookings', saved.id), { status: 'confirmed' }));
+  const passengerGroups = passengerRecordGroups(buildTripPassengers(trip.id, [saved]));
+  passengerGroups[0].people[0].city = 'Boa Viagem';
+  await januAdmin.adminSavePassengerRecords({ tripId: trip.id, groups: passengerGroups });
+  const passengerRecords = await januAdmin.adminGetPassengerRecords(trip.id);
+  assert.equal(passengerRecords.length, 1); assert.equal(passengerRecords[0].people.length, 4);
+  assert.equal(passengerRecords[0].people[0].city, 'Boa Viagem');
+  assert.equal(passengerRecords[0].people[1].cpf, '');
+  assert.equal((await getDoc(doc(customer, 'bookings', saved.id))).data().status, 'pending');
+  await assertFails(getDoc(doc(customer, 'booking_passengers', saved.id + '-0')));
+  await assertFails(getDoc(doc(other, 'booking_passengers', saved.id + '-0')));
+  await assertFails(getDoc(doc(anonymous, 'booking_passengers', saved.id + '-0')));
+  await assert.rejects(client.adminGetPassengerRecords(trip.id));
+  await assert.rejects(client.adminSavePassengerRecords({ tripId: trip.id, groups: passengerGroups }));
+  await assert.rejects(januAdmin.adminSavePassengerRecords({ tripId: trip.id, groups: [{ bookingId: saved.id, people: [normalizePassenger({ name: 'Outra pessoa' })] }] }), /mudaram/);
+  const persistedPassengerRecord = (await getDoc(doc(agency, 'booking_passengers', saved.id + '-0'))).data();
+  await assertFails(setDoc(doc(customer, 'booking_passengers', saved.id + '-0'), { ...persistedPassengerRecord, updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(agency, 'booking_passengers', saved.id + '-0'), { ...persistedPassengerRecord, tripId: 'viagem-falsa', updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(agency, 'booking_passengers', saved.id + '-0'), { ...persistedPassengerRecord, person: { ...persistedPassengerRecord.person, city: 'x'.repeat(81) }, updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(agency, 'booking_passengers', saved.id + '-0'), { ...persistedPassengerRecord, person: { ...persistedPassengerRecord.person, unknown: 'não permitido' }, updatedAt: serverTimestamp() }));
+  await assertFails(firestore.deleteDoc(doc(agency, 'booking_passengers', saved.id + '-0')));
   const fake = { ...saved, id: 'JT-0000000002', totalCents: 1, createdAtServer: serverTimestamp() };
   await assertFails(setDoc(doc(customer, 'bookings', fake.id), fake));
   await assertFails(setDoc(doc(customer, 'bookings', fake.id), { ...fake, totalCents: saved.totalCents, uid: 'other' }));
@@ -102,6 +123,8 @@ try {
   assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 4);
   await admin.adminSetStatus({ id: saved.id, status: 'cancelled' });
   await admin.adminSetStatus({ id: saved.id, status: 'cancelled' });
+  await assert.rejects(januAdmin.adminSavePassengerRecords({ tripId: trip.id, groups: passengerGroups }), /mudaram/);
+  await assertFails(setDoc(doc(agency, 'booking_passengers', saved.id + '-0'), { ...persistedPassengerRecord, updatedAt: serverTimestamp() }));
   assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 0);
   await assert.rejects(admin.adminSetStatus({ id: saved.id, status: 'confirmed' }), /alteração/);
   await inventory({ capacity: 2, reserved: 0, enabled: true, demo: false });
@@ -137,6 +160,17 @@ try {
   assert.equal((await getDoc(doc(agency, 'bookings', successful.id))).exists(), false);
   await admin.adminDeleteBooking(successful.id);
   await admin.adminDeleteBooking(saved.id);
+  assert.equal((await getDoc(doc(agency, 'booking_passengers', saved.id + '-0'))).exists(), false);
+  const tenId = 'JT-0000000010';
+  await environment.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), 'bookings', tenId), { ...saved, id: tenId, seats: 10, seatsHeld: false, status: 'pending' }));
+  const tenGroups = [{ bookingId: tenId, people: Array.from({ length: 10 }, (_, index) => normalizePassenger({ name: `Passageiro ${index + 1}`, city: 'Boa Viagem', extraFields: '{"restricaoalimentar":"Não"}' })) }];
+  await januAdmin.adminSavePassengerRecords({ tripId: trip.id, groups: tenGroups });
+  assert.equal((await januAdmin.adminGetPassengerRecords(trip.id)).find(record => record.bookingId === tenId).people.length, 10);
+  const tenth = (await getDoc(doc(agency, 'booking_passengers', tenId + '-9'))).data();
+  await assertFails(setDoc(doc(agency, 'booking_passengers', tenId + '-9'), { ...tenth, person: { ...tenth.person, name: 'x'.repeat(141) }, updatedAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(agency, 'booking_passengers', tenId + '-10'), { ...tenth, slot: 10, updatedAt: serverTimestamp() }));
+  await admin.adminDeleteBooking(tenId);
+  for (let slot = 0; slot < 10; slot++) assert.equal((await getDoc(doc(agency, 'booking_passengers', `${tenId}-${slot}`))).exists(), false);
   assert.equal((await getDoc(doc(customer, 'trip_inventory', trip.id))).data().reserved, 0);
   await environment.withSecurityRulesDisabled(async context => {
     await setDoc(doc(context.firestore(), 'bookings', 'JT-0000000008'), { ...saved, id:'JT-0000000008', seatsHeld:false, tripEndDate:'2020-01-01', expiresAt:Timestamp.fromDate(new Date('2020-01-02T03:00:00Z')) });
@@ -148,6 +182,7 @@ try {
   console.log('PASS: salvamento, preço validado, privacidade, repetição segura, limite simultâneo e confirmação/cancelamento.');
   console.log('PASS: somente o admin principal provisiona o acesso da Janu e o novo admin recebe permissões de gestão.');
   console.log('PASS: capacidade interna e aviso público de vagas só podem ser alterados pela gestão.');
+  console.log('PASS: dados individuais privados, validação por passageiro, reserva ativa, vagas preservadas e limpeza na exclusão.');
 } finally {
   await environment.cleanup();
 }

@@ -7,15 +7,18 @@
     "build": "node build.mjs",
     "dev": "npm run build && node server.mjs",
     "test:reservas": "node --experimental-vm-modules tests/reservations.mjs",
-    "test:passageiros": "node --test tests/passenger-list.mjs"
+    "test:passageiros": "node --test tests/passenger-list.mjs",
+    "test:word": "node --test tests/passenger-word.mjs && node --experimental-vm-modules tests/owner-word.mjs"
   },
   "dependencies": {
+    "fflate": "0.8.3",
     "firebase": "^12.0.0",
     "pdf-lib": "1.17.1"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
     "esbuild": "^0.25.0",
-    "firebase-admin": "^14.5.0"
+    "firebase-admin": "^14.5.0",
+    "jsdom": "26.1.0"
   }
 }

@@ -5,7 +5,7 @@ import { prepareBookingAnimation, startBookingAnimation } from './booking-animat
 import { initScrollGuide } from './scroll-guide.js';
 import { buildPassengerList, downloadPassengerList, openPassengerPrintWindow, printPassengerList } from './passenger-list.js';
 import { PASSEIOS_SEED, adaptarPasseioParaApp, parcelasDisponiveis } from './catalogo.js';
-import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, watchTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking, adminCreatePhoneAccount, adminSetCurrentPassword, isProvisionedAdminAccount, adminAccess } from './data.js';
+import { configured, authReady, currentUser, login, loginWithGoogle, resetPassword, logout, accountLabel, getCatalog, getTrips, watchTrips, createBooking, getBooking, myBookings, watchBooking, watchMyBookings, adminGet, adminGetPassengerRecords, adminSavePassengerRecords, adminSetCapacity, adminSetStatus, adminSaveTrip, adminManualBooking, adminDeleteBooking, adminCreatePhoneAccount, adminSetCurrentPassword, isProvisionedAdminAccount, adminAccess } from './data.js';
 
 const WHATSAPP_NUMBER = '5588988737924';
 
@@ -32,6 +32,7 @@ let disposeDetailPhotos = () => {};
 let disposeBookingAnimation = () => {};
 let disposeBookings = () => {};
 let disposeAdminExpiry = () => {};
+let disposePassengerWord = () => {};
 let disposeTripExpiry = () => {};
 let disposeInventory = () => {};
 let adminActiveTab = 'trips';
@@ -1255,6 +1256,7 @@ function renderPolicies() {
         <li>E-mail.</li>
         <li>Telefone.</li>
         <li>CPF, quando necessário para a reserva.</li>
+        <li>Cidade e dados individuais necessários para a relação de passageiros solicitada pelo local da viagem.</li>
         <li>Viagem escolhida, quantidade de passageiros, embarque e forma de pagamento.</li>
       </ul>
       <h3>Para que os dados são usados</h3>
@@ -1699,7 +1701,9 @@ function adminTripReservationsMarkup(trip, bookings, backRoute = '#/gestao') {
     <div class="admin-passenger-export" role="group" aria-label="Relação de passageiros desta viagem">
       <button type="button" data-passenger-export="pdf">${icon('document', 18)} Baixar lista (PDF)</button>
       <button type="button" data-passenger-export="print">${icon('printer', 18)} Imprimir lista</button>
+      <button type="button" data-word-open aria-expanded="false" aria-controls="trip-word-panel">${icon('document', 18)} Preencher Word</button>
     </div>
+    <section id="trip-word-panel" class="admin-word-panel" aria-label="Preencher modelo Word com os passageiros da viagem" hidden></section>
     <details class="admin-vacancy-details">
     <summary>${icon('ticket', 20)} Alterar vagas da viagem</summary>
     <form class="admin-vacancy-control" data-capacity-control data-id="${escapeHtml(trip.id)}">
@@ -1809,6 +1813,8 @@ async function loadAdmin() {
   if (!content) return;
   const { trips, bookings } = await adminFetch();
   if (!content.isConnected) return;
+  disposePassengerWord();
+  disposePassengerWord = () => {};
   disposeAdminExpiry();
   let visibleBookings = bookings.map(booking => booking.id).join('|');
   disposeAdminExpiry = watchDeadlines(bookings.map(booking => reservationDeadline(booking, TRIPS)), () => {
@@ -1946,6 +1952,40 @@ async function loadAdmin() {
     catch { button.disabled = false; showToast('Não foi possível atualizar. Tente novamente.'); }
   });
   const addPassengerButton = content.querySelector('[data-add-passenger]');
+  const wordOpen = content.querySelector('[data-word-open]');
+  const wordPanel = content.querySelector('#trip-word-panel');
+  let wordMounted = false;
+  wordOpen?.addEventListener('click', async () => {
+    if (wordOpen.disabled || !selectedTrip) return;
+    const show = wordPanel.hidden;
+    wordPanel.hidden = !show;
+    wordOpen.setAttribute('aria-expanded', String(show));
+    if (!show) return;
+    if (!wordMounted) {
+      wordOpen.disabled = true;
+      try {
+        const { mountPassengerWord } = await import('./passenger-word-ui.js');
+        if (!content.isConnected) return;
+        disposePassengerWord = mountPassengerWord(wordPanel, {
+          getSnapshot: async () => {
+            const [latest, records] = await Promise.all([adminFetch(), adminGetPassengerRecords(selectedTrip.id)]);
+            if (!latest.trips.some(trip => trip.id === selectedTrip.id)) throw new Error('Essa viagem não está mais disponível no controle de reservas.');
+            const liveTrip = latest.catalog?.find(trip => trip.id === selectedTrip.id);
+            const trip = normalizeTrip({ ...(TRIPS.find(trip => trip.id === selectedTrip.id) || { id: selectedTrip.id, title: tripName(selectedTrip.id) }), ...liveTrip });
+            return { trip, bookings: latest.bookings, records };
+          },
+          saveRecords: adminSavePassengerRecords,
+          onClose: () => { wordPanel.hidden = true; wordOpen.setAttribute('aria-expanded', 'false'); wordOpen.focus(); },
+          onDownload: () => showToast('Word dos passageiros baixado.'),
+        });
+        wordMounted = true;
+      } catch (error) {
+        wordPanel.hidden = true; wordOpen.setAttribute('aria-expanded', 'false');
+        showToast(error.message || 'Não foi possível abrir o preenchimento de Word. Atualize e tente novamente.');
+      } finally { wordOpen.disabled = false; }
+    }
+    wordPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
   content.querySelectorAll('[data-passenger-export]').forEach(button => button.addEventListener('click', async () => {
     if (button.disabled || !selectedTrip) return;
     const original = button.innerHTML;
@@ -2104,6 +2144,8 @@ async function loadAdmin() {
 }
 
 function render() {
+  disposePassengerWord();
+  disposePassengerWord = () => {};
   disposeAdminExpiry();
   disposeAdminExpiry = () => {};
   disposeInventory();

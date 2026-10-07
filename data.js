@@ -5,6 +5,7 @@ import { bookingId, bookingClosesAt, prepareCatalog, catalogForApp, bookingSnaps
 import { reservationDeadline, reservationVisible, watchDeadlines, tripDeadline } from './reservation-lifecycle.js';
 import { firebaseConfig } from './firebase-config.js';
 import { nameAccountEmail, loginIdentifierEmail, normalizeLoginIdentifier, isNameAccount, accountLabel } from './account-name.js';
+import { normalizePassenger } from './passenger-records.js';
 export { accountLabel } from './account-name.js';
 
 export const configured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
@@ -313,6 +314,41 @@ export async function adminGet(ids = []) {
   const [trips, snap, catalog] = await Promise.all([getTrips(ids), getDocs(query(collection(db, 'bookings'), orderBy('createdAt', 'desc'))), getCatalog()]);
   return { trips: trips.filter(item => { const deadline = tripDeadline(catalog.find(trip => trip.id === item.id) || {}); return deadline === null || Date.now() < deadline; }), bookings: snap.docs.map(doc => doc.data()).filter(item => reservationVisible(item, catalog)), catalog };
 }
+export async function adminGetPassengerRecords(tripId) {
+  requireUser();
+  if (!validTripId(tripId)) throw new Error('Viagem inválida.');
+  const snap = await getDocs(query(collection(db, 'booking_passengers'), where('tripId', '==', tripId)));
+  const groups = new Map();
+  for (const item of snap.docs) {
+    const record = item.data();
+    if (!groups.has(record.bookingId)) groups.set(record.bookingId, { bookingId: record.bookingId, tripId, people: [] });
+    groups.get(record.bookingId).people[record.slot] = record.person;
+  }
+  return [...groups.values()];
+}
+export async function adminSavePassengerRecords({ tripId, groups }) {
+  requireUser();
+  if (!validTripId(tripId) || !Array.isArray(groups) || groups.length > 500) throw new Error('Confira os passageiros da viagem.');
+  const seen = new Set();
+  const normalized = groups.map(group => {
+    if (!/^JT-[A-F0-9]{10}$/.test(group.bookingId) || seen.has(group.bookingId) || !Array.isArray(group.people) || group.people.length < 1 || group.people.length > 10) throw new Error('Confira os passageiros da reserva.');
+    seen.add(group.bookingId);
+    return { bookingId: group.bookingId, people: group.people.map(normalizePassenger) };
+  });
+  // Uma transação por reserva respeita o limite de consultas das regras do Firestore.
+  for (const group of normalized) {
+    await runTransaction(db, async tx => {
+      const booking = await tx.get(doc(db, 'bookings', group.bookingId));
+      if (!booking.exists() || booking.data().tripId !== tripId || !['pending', 'confirmed'].includes(booking.data().status) || booking.data().seats !== group.people.length) throw new Error('As reservas mudaram. Atualize os passageiros antes de baixar.');
+      const refs = group.people.map((_, slot) => doc(db, 'booking_passengers', `${group.bookingId}-${slot}`));
+      const previous = await Promise.all(refs.map(ref => tx.get(ref)));
+      group.people.forEach((person, slot) => {
+        if (previous[slot].exists() && JSON.stringify(normalizePassenger(previous[slot].data().person)) === JSON.stringify(person)) return;
+        tx.set(refs[slot], { bookingId: group.bookingId, tripId, slot, person, updatedAt: serverTimestamp() });
+      });
+    });
+  }
+}
 export async function adminSetCapacity({ tripId, capacity, enabled = true, publicVacancyStatus = 'available' }) {
   requireUser();
   if (!validTripId(tripId) || !Number.isInteger(capacity) || capacity < 0 || capacity > 500) throw new Error('Capacidade inválida.');
@@ -429,6 +465,7 @@ export async function adminDeleteBooking(id) {
       tx.update(tripRef, { reserved: snapshot.data().reserved - booking.seats });
     }
     tx.delete(bookingRef);
+    for (let slot = 0; slot < 10; slot++) tx.delete(doc(db, 'booking_passengers', `${id}-${slot}`));
   });
   invalidateTripCache();
 }

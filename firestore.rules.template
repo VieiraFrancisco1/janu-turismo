@@ -69,6 +69,35 @@ service cloud.firestore {
         || (after.status == 'cancelled' && after.seatsHeld == false
           && (!held(before) || getAfter(path).data.reserved == get(path).data.reserved - before.seats)));
     }
+    function validPassenger(p) {
+      return p is map && p.keys().hasAll(['name', 'cpf', 'city', 'state', 'rg', 'birthDate', 'phone', 'address', 'nationality', 'extraFields'])
+        && p.keys().hasOnly(['name', 'cpf', 'city', 'state', 'rg', 'birthDate', 'phone', 'address', 'nationality', 'extraFields'])
+        && p.name is string && p.name.size() <= 140
+        && p.cpf is string && (p.cpf == '' || p.cpf.matches('^[0-9]{11}$'))
+        && p.city is string && p.city.size() <= 80
+        && p.state is string && (p.state == '' || p.state.matches('^[A-Z]{2}$'))
+        && p.rg is string && p.rg.size() <= 30
+        && p.birthDate is string && (p.birthDate == '' || p.birthDate.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))
+        && p.phone is string && (p.phone == '' || p.phone.matches('^[0-9]{10,15}$'))
+        && p.address is string && p.address.size() <= 200
+        && p.nationality is string && p.nationality.size() <= 60
+        && p.extraFields is string && p.extraFields.size() <= 4000;
+    }
+    function validPassengerRecord(d, id) {
+      let booking = get(bookingPath(d.bookingId)).data;
+      return d.keys().hasAll(['bookingId', 'tripId', 'slot', 'person', 'updatedAt'])
+        && d.keys().hasOnly(['bookingId', 'tripId', 'slot', 'person', 'updatedAt'])
+        && d.bookingId.matches('^JT-[A-F0-9]{10}$') && id == d.bookingId + '-' + string(d.slot)
+        && d.tripId == booking.tripId && booking.status in ['pending', 'confirmed']
+        && d.slot is int && d.slot >= 0 && d.slot < booking.seats && d.slot < 10
+        && d.updatedAt == request.time && validPassenger(d.person);
+    }
+    match /booking_passengers/{passengerId} {
+      allow get, list: if agency();
+      allow create, update: if agency() && validPassengerRecord(request.resource.data, passengerId);
+      allow delete: if agency() && passengerId.matches('^JT-[A-F0-9]{10}-[0-9]$')
+        && !existsAfter(bookingPath(passengerId.split('-')[0] + '-' + passengerId.split('-')[1]));
+    }
     match /admin_users/{userId} {
       allow get, list: if agency();
       allow create: if primaryAgency()
